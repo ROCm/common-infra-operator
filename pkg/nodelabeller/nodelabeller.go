@@ -156,6 +156,6 @@ func (nl *nodeLabeller) SetNodeLabellerAsDesired(ds *appsv1.DaemonSet, nlSpec *p
 		ds.Spec.Template.Spec.Tolerations = nil
 	}
 
-	return nl.scheme, nil // GSMTODO .. in caller, probably can switch to using "scheme" var in cmd/main.go
+	return nl.scheme, nil
 
 }

@@ -79,11 +79,6 @@ func (dp *devicePlugin) SetDevicePluginAsDesired(ds *appsv1.DaemonSet, dpSpec *p
 		nodeSelector[key] = val
 	}
 
-	/* GSMTODO
-	if dpSpec.CommonNetworkCfg.DriverEnable != nil && *dpSpec.CommonNetworkCfg.DriverEnable {
-		nodeSelector[labels.GetKernelModuleReadyNodeLabel(dpSpec.CommonNetworkCfg.Namespace, dpSpec.CommonNetworkCfg.Name)] = ""
-	}
-	*/
 	imagePullSecrets := []v1.LocalObjectReference{}
 	if dpSpec.MainContainer.ImageRegistrySecret != nil {
 		imagePullSecrets = append(imagePullSecrets, *dpSpec.MainContainer.ImageRegistrySecret)
@@ -135,7 +130,7 @@ func (dp *devicePlugin) SetDevicePluginAsDesired(ds *appsv1.DaemonSet, dpSpec *p
 						WorkingDir:      "/root",
 						Command:         dpSpec.MainContainer.Command,
 						Image:           mainContainerImage,
-						SecurityContext: &v1.SecurityContext{Privileged: ptr.To(dpSpec.MainContainer.IsPrivileged)}, // GSMTODO resources, configmap
+						SecurityContext: &v1.SecurityContext{Privileged: ptr.To(dpSpec.MainContainer.IsPrivileged)},
 						VolumeMounts:    dpSpec.MainContainer.VolumeMounts,
 					},
 				},
@@ -171,17 +166,5 @@ func (dp *devicePlugin) SetDevicePluginAsDesired(ds *appsv1.DaemonSet, dpSpec *p
 	} else {
 		ds.Spec.Template.Spec.Tolerations = nil
 	}
-	return dp.scheme, nil // GSMTODO .. in caller, probably can switch to using "scheme" var in cmd/main.go
+	return dp.scheme, nil
 }
-
-/* GSMTODO
-func getNodeSelector(nwConfig *amdv1alpha1.NetworkConfig) map[string]string {
-	if nwConfig.Spec.Selector != nil {
-		return nwConfig.Spec.Selector
-	}
-
-	ns := make(map[string]string, 0)
-	ns[utils.NodeFeatureLabelAmdGpu] = "true"
-	return ns
-}
-*/

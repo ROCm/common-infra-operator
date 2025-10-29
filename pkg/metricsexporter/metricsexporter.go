@@ -78,10 +78,6 @@ func (exp *metricsExporter) SetMetricsExporterAsDesired(ds *appsv1.DaemonSet, ex
 	}
 
 	nodeSelector := expSpec.DsSpec.Selector
-	// only use module ready label as node selector when KMM driver is enabled
-	//if expSpec.CommonNetworkCfg.DriverEnable != nil && *expSpec.CommonNetworkCfg.DriverEnable {
-	//GSMTODO nodeSelector[labels.GetKernelModuleReadyNodeLabel(expSpec.CommonNetworkCfg.Namespace, expSpec.CommonNetworkCfg.Name)] = ""
-	//}
 
 	mainContainerImage := expSpec.DsSpec.MainContainer.Image
 	if expSpec.DsSpec.MainContainer.Image == "" {
@@ -295,7 +291,7 @@ func (exp *metricsExporter) SetMetricsExporterAsDesired(ds *appsv1.DaemonSet, ex
 		ds.Spec.Template.Spec.Tolerations = nil
 	}
 
-	return exp.scheme, nil // GSMTODO .. in caller , probably can switch to using "scheme" var in cmd/main.go
+	return exp.scheme, nil
 }
 
 func (exp *metricsExporter) SetMetricsServiceAsDesired(svc *v1.Service, expSpec *protos.MetricsExporterSpec) (*runtime.Scheme, error) {
@@ -344,7 +340,7 @@ func (exp *metricsExporter) SetMetricsServiceAsDesired(svc *v1.Service, expSpec 
 
 	}
 
-	return exp.scheme, nil // GSMTODO .. in caller , probably can switch to using "scheme" var in cmd/main.go
+	return exp.scheme, nil
 }
 
 // SetServiceMonitorAsDesired configures the ServiceMonitor resource for Prometheus integration
@@ -441,7 +437,7 @@ func (exp *metricsExporter) SetServiceMonitorAsDesired(sm *monitoringv1.ServiceM
 	// Set custom labels
 	sm.Labels = expSpec.Prometheus.ServiceMonitor.Labels
 
-	return exp.scheme, nil // GSMTODO .. in caller , probably can switch to using "scheme" var in cmd/main.go
+	return exp.scheme, nil
 }
 
 // SetStaticAuthSecretAsDesired creates a secret containing the kube-rbac-proxy static authorization config
@@ -478,5 +474,5 @@ func (exp *metricsExporter) SetStaticAuthSecretAsDesired(secret *v1.Secret, expS
 		"config.yaml": string(staticAuthConfigJSON),
 	}
 
-	return exp.scheme, nil // GSMTODO .. in caller , probably can switch to using "scheme" var in cmd/main.go
+	return exp.scheme, nil
 }
