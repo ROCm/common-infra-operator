@@ -1,0 +1,52 @@
+name: Go Lint
+
+on:
+  workflow_call:
+    inputs:
+      go-version-file:
+        description: 'Path to go.mod or .go-version file'
+        required: false
+        type: string
+        default: 'go.mod'
+      build-deps:
+        description: 'Space-separated apt packages to install (e.g., "pkg-config libdrm-dev")'
+        required: false
+        type: string
+        default: ''
+      check-target:
+        description: 'Make target to run for lint/format checks'
+        required: false
+        type: string
+        default: 'check'
+      golangci-lint-version:
+        description: 'Version of golangci-lint to install'
+        required: false
+        type: string
+        default: 'v1.64.8'
+
+jobs:
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ inputs.go-version-file }}
+
+      - name: Install build dependencies
+        if: inputs.build-deps != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ inputs.build-deps }}
+
+      - name: Install lint tools
+        run: |
+          go install github.com/gordonklaus/ineffassign@latest
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@${{ inputs.golangci-lint-version }}
+
+      - name: Run checks
+        run: make ${{ inputs.check-target }}

@@ -1,0 +1,64 @@
+name: Helm Publish to gh-pages
+
+on:
+  workflow_call:
+    inputs:
+      chart-dir:
+        description: 'Path to the Helm chart directory (e.g., helm-charts-k8s)'
+        required: false
+        type: string
+        default: 'helm-charts-k8s'
+      helm-repo-url:
+        description: 'GitHub Pages URL for the Helm repo (e.g., https://rocm.github.io/k8s-gpu-dra-driver)'
+        required: true
+        type: string
+      version:
+        description: 'Chart version and appVersion to package (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  publish:
+    name: Publish Helm Chart
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Package Helm chart
+        run: |
+          helm package \
+            --version "${{ inputs.version }}" \
+            --app-version "${{ inputs.version }}" \
+            "${{ inputs.chart-dir }}"
+
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Update chart repo
+        run: |
+          # Move packaged chart into gh-pages charts directory
+          mkdir -p gh-pages/charts
+          cp *.tgz gh-pages/charts/
+
+          # Update the Helm repo index (merge with existing)
+          cd gh-pages
+          helm repo index . --url "${{ inputs.helm-repo-url }}" --merge index.yaml 2>/dev/null \
+            || helm repo index . --url "${{ inputs.helm-repo-url }}"
+
+      - name: Commit and push to gh-pages
+        run: |
+          cd gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add charts/ index.yaml
+          git commit -m "Release chart ${{ inputs.version }}" || echo "No changes to commit"
+          git push
