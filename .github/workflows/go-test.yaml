@@ -1,0 +1,42 @@
+name: Go Test
+
+on:
+  workflow_call:
+    inputs:
+      go-version-file:
+        description: 'Path to go.mod or .go-version file'
+        required: false
+        type: string
+        default: 'go.mod'
+      build-deps:
+        description: 'Space-separated apt packages to install (e.g., "pkg-config libdrm-dev")'
+        required: false
+        type: string
+        default: ''
+      test-target:
+        description: 'Make target to run for tests'
+        required: false
+        type: string
+        default: 'test'
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ inputs.go-version-file }}
+
+      - name: Install build dependencies
+        if: inputs.build-deps != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ inputs.build-deps }}
+
+      - name: Run tests
+        run: make ${{ inputs.test-target }}

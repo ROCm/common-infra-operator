@@ -1,0 +1,44 @@
+name: Draft Release
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+      chart-dir:
+        description: 'Path to the Helm chart directory (e.g., helm-charts-k8s)'
+        required: false
+        type: string
+        default: 'helm-charts-k8s'
+
+jobs:
+  release:
+    name: Create Draft Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Package Helm chart
+        run: |
+          helm package \
+            --version "${{ inputs.version }}" \
+            --app-version "${{ inputs.version }}" \
+            "${{ inputs.chart-dir }}"
+
+      - name: Create draft GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version }}
+          draft: true
+          generate_release_notes: true
+          files: '*.tgz'

@@ -1,0 +1,84 @@
+name: Auto Tag
+
+on:
+  workflow_call:
+    inputs:
+      branch-type:
+        description: 'Type of branch: "develop" for develop-N tags, "release" for vX.Y.Z-N tags'
+        required: true
+        type: string
+    outputs:
+      tag:
+        description: 'The git tag that was created and pushed'
+        value: ${{ jobs.tag.outputs.tag }}
+
+jobs:
+  tag:
+    name: Compute & Push Tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.compute.outputs.tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Compute next tag
+        id: compute
+        run: |
+          set -euo pipefail
+
+          branch_type="${{ inputs.branch-type }}"
+          branch_name="${GITHUB_REF#refs/heads/}"
+
+          if [ "$branch_type" = "develop" ]; then
+            # Find latest develop-N tag, increment
+            latest=$(git tag -l 'develop-*' | sed 's/develop-//' | sort -n | tail -1)
+            next=$(( ${latest:-0} + 1 ))
+            tag="develop-${next}"
+
+          elif [ "$branch_type" = "release" ]; then
+            # Extract X.Y from branch name release-vX.Y
+            xy=$(echo "$branch_name" | sed 's/release-v//')
+
+            if [ -z "$xy" ]; then
+              echo "ERROR: Could not extract version from branch name: $branch_name" >&2
+              exit 1
+            fi
+
+            # Find latest clean release tag vX.Y.Z (no -N suffix)
+            latest_release=$(git tag -l "v${xy}.*" | grep -E "^v${xy}\.[0-9]+$" | sort -V | tail -1 || true)
+
+            if [ -z "$latest_release" ]; then
+              target="v${xy}.0"
+            else
+              # Extract Z from vX.Y.Z and increment
+              z=$(echo "$latest_release" | sed "s/v${xy}\.\([0-9]*\)/\1/")
+              target="v${xy}.$(( z + 1 ))"
+            fi
+
+            # Find latest build number for this target
+            latest_build=$(git tag -l "${target}-*" | sed "s/${target}-//" | sort -n | tail -1 || true)
+            next=$(( ${latest_build:-0} + 1 ))
+            tag="${target}-${next}"
+
+          else
+            echo "ERROR: Unknown branch-type: $branch_type (expected 'develop' or 'release')" >&2
+            exit 1
+          fi
+
+          echo "Computed tag: $tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        run: |
+          tag="${{ steps.compute.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "$tag"
+          git push origin "$tag"
+          echo "Pushed tag: $tag"

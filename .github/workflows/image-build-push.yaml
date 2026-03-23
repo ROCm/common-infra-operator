@@ -1,0 +1,97 @@
+name: Image Build & Push
+
+on:
+  workflow_call:
+    inputs:
+      image-registry:
+        description: 'Container registry (e.g., docker.io/ROCm)'
+        required: true
+        type: string
+      image-name:
+        description: 'Image name (e.g., k8s-gpu-dra-driver)'
+        required: true
+        type: string
+      image-tag:
+        description: 'Image tag (e.g., staging-1, v1.0.0-3, v1.0.0)'
+        required: true
+        type: string
+      push:
+        description: 'Whether to push the image after building (false for PR validation)'
+        required: false
+        type: boolean
+        default: true
+      env-registry:
+        description: 'Environment variable name for the image registry (e.g., DRIVER_IMAGE_REGISTRY)'
+        required: true
+        type: string
+      env-tag:
+        description: 'Environment variable name for the image tag (e.g., DRIVER_IMAGE_TAG)'
+        required: true
+        type: string
+      env-name:
+        description: 'Environment variable name for the image name (e.g., DRIVER_IMAGE_NAME)'
+        required: true
+        type: string
+      build-target:
+        description: 'Make target for building the image'
+        required: false
+        type: string
+        default: 'build'
+      push-target:
+        description: 'Make target for pushing the image'
+        required: false
+        type: string
+        default: 'push'
+    secrets:
+      registry-username:
+        description: 'Registry username'
+        required: false
+      registry-password:
+        description: 'Registry password/token'
+        required: false
+
+jobs:
+  build-push:
+    name: Build & Push Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to registry
+        if: inputs.push
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.registry-username }}
+          password: ${{ secrets.registry-password }}
+
+      - name: Build image
+        env:
+          IMAGE_REGISTRY: ${{ inputs.image-registry }}
+          IMAGE_NAME: ${{ inputs.image-name }}
+          IMAGE_TAG: ${{ inputs.image-tag }}
+          ENV_REGISTRY: ${{ inputs.env-registry }}
+          ENV_NAME: ${{ inputs.env-name }}
+          ENV_TAG: ${{ inputs.env-tag }}
+        run: |
+          export "${ENV_REGISTRY}=${IMAGE_REGISTRY}"
+          export "${ENV_NAME}=${IMAGE_NAME}"
+          export "${ENV_TAG}=${IMAGE_TAG}"
+          echo "Building ${IMAGE_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+          make ${{ inputs.build-target }}
+
+      - name: Push image
+        if: inputs.push
+        env:
+          IMAGE_REGISTRY: ${{ inputs.image-registry }}
+          IMAGE_NAME: ${{ inputs.image-name }}
+          IMAGE_TAG: ${{ inputs.image-tag }}
+          ENV_REGISTRY: ${{ inputs.env-registry }}
+          ENV_NAME: ${{ inputs.env-name }}
+          ENV_TAG: ${{ inputs.env-tag }}
+        run: |
+          export "${ENV_REGISTRY}=${IMAGE_REGISTRY}"
+          export "${ENV_NAME}=${IMAGE_NAME}"
+          export "${ENV_TAG}=${IMAGE_TAG}"
+          echo "Pushing ${IMAGE_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+          make ${{ inputs.push-target }}
