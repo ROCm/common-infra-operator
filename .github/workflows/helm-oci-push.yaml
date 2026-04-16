@@ -1,0 +1,79 @@
+name: Helm OCI Push
+
+on:
+  workflow_call:
+    inputs:
+      chart-dir:
+        description: 'Path to the Helm chart directory (e.g., helm-charts-k8s)'
+        required: false
+        type: string
+        default: 'helm-charts-k8s'
+      chart-version:
+        description: 'SemVer chart version (e.g., 0.0.0-develop.4, 1.0.0-3)'
+        required: true
+        type: string
+      app-version:
+        description: 'App version for Chart.AppVersion (e.g., develop-4, v1.0.0-3)'
+        required: true
+        type: string
+      registry:
+        description: 'OCI registry to push to (e.g., docker.io/rocm)'
+        required: true
+        type: string
+      image-repository:
+        description: 'Override image.repository in values.yaml before packaging (e.g., docker.io/rocm/k8s-gpu-dra-driver)'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      registry-username:
+        description: 'Registry username for helm registry login'
+        required: false
+      registry-password:
+        description: 'Registry password/token'
+        required: false
+
+jobs:
+  push:
+    name: Package & Push Helm Chart
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Override image repository
+        if: inputs.image-repository != ''
+        run: |
+          set -euo pipefail
+          CHART_DIR="${{ inputs.chart-dir }}"
+          echo "Overriding image.repository to ${{ inputs.image-repository }}"
+          yq -i '.image.repository = "${{ inputs.image-repository }}"' "${CHART_DIR}/values.yaml"
+
+      - name: Package Helm chart
+        run: |
+          set -euo pipefail
+          echo "Packaging chart: version=${{ inputs.chart-version }}, appVersion=${{ inputs.app-version }}"
+          helm package \
+            --version "${{ inputs.chart-version }}" \
+            --app-version "${{ inputs.app-version }}" \
+            "${{ inputs.chart-dir }}"
+
+      - name: Log in to registry
+        run: |
+          set -euo pipefail
+          echo "${{ secrets.registry-password }}" | \
+            helm registry login "${{ inputs.registry }}" \
+              --username "${{ secrets.registry-username }}" \
+              --password-stdin
+
+      - name: Push Helm chart
+        run: |
+          set -euo pipefail
+          PACKAGE=$(ls *.tgz)
+          echo "Pushing ${PACKAGE} to oci://${{ inputs.registry }}"
+          helm push "${PACKAGE}" "oci://${{ inputs.registry }}"
