@@ -66,8 +66,9 @@ jobs:
       - name: Log in to registry
         run: |
           set -euo pipefail
+          REGISTRY_HOST=$(echo "${{ inputs.registry }}" | cut -d'/' -f1)
           echo "${{ secrets.registry-password }}" | \
-            helm registry login "${{ inputs.registry }}" \
+            helm registry login "${REGISTRY_HOST}" \
               --username "${{ secrets.registry-username }}" \
               --password-stdin
 
