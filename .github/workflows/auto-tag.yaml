@@ -42,22 +42,26 @@ jobs:
             tag="develop-${next}"
 
           elif [ "$branch_type" = "release" ]; then
-            # Extract X.Y from branch name release-vX.Y
-            xy=$(echo "$branch_name" | sed 's/release-v//')
+            # Extract the X.Y line from the branch name. Accepts both
+            # release-vX.Y and release-vX.Y.Z; any trailing patch component is
+            # decorative and dropped, since patch numbers come from tags.
+            xy=$(echo "$branch_name" | sed 's/release-v//' | cut -d. -f1,2)
 
-            if [ -z "$xy" ]; then
-              echo "ERROR: Could not extract version from branch name: $branch_name" >&2
+            if ! echo "$xy" | grep -qE '^[0-9]+\.[0-9]+$'; then
+              echo "ERROR: Could not extract X.Y version from branch name: $branch_name" >&2
               exit 1
             fi
 
+            xy_re=$(echo "$xy" | sed 's/\./\\./g')
+
             # Find latest clean release tag vX.Y.Z (no -N suffix)
-            latest_release=$(git tag -l "v${xy}.*" | grep -E "^v${xy}\.[0-9]+$" | sort -V | tail -1 || true)
+            latest_release=$(git tag -l "v${xy}.*" | grep -E "^v${xy_re}\.[0-9]+$" | sort -V | tail -1 || true)
 
             if [ -z "$latest_release" ]; then
               target="v${xy}.0"
             else
               # Extract Z from vX.Y.Z and increment
-              z=$(echo "$latest_release" | sed "s/v${xy}\.\([0-9]*\)/\1/")
+              z=$(echo "$latest_release" | sed "s/^v${xy_re}\.//")
               target="v${xy}.$(( z + 1 ))"
             fi
 
