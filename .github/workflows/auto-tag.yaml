@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       branch-type:
-        description: 'Type of branch: "develop" for develop-N tags, "release" for vX.Y.Z-N tags'
+        description: 'Type of branch: "develop" for develop-N tags, "main" for main-N tags, "release" for vX.Y.Z-N tags'
         required: true
         type: string
     outputs:
@@ -41,6 +41,12 @@ jobs:
             next=$(( ${latest:-0} + 1 ))
             tag="develop-${next}"
 
+          elif [ "$branch_type" = "main" ]; then
+            # Find latest main-N tag, increment
+            latest=$(git tag -l 'main-*' | sed 's/main-//' | sort -n | tail -1)
+            next=$(( ${latest:-0} + 1 ))
+            tag="main-${next}"
+
           elif [ "$branch_type" = "release" ]; then
             # Extract the X.Y line from the branch name. Accepts both
             # release-vX.Y and release-vX.Y.Z; any trailing patch component is
@@ -71,7 +77,7 @@ jobs:
             tag="${target}-${next}"
 
           else
-            echo "ERROR: Unknown branch-type: $branch_type (expected 'develop' or 'release')" >&2
+            echo "ERROR: Unknown branch-type: $branch_type (expected 'develop', 'main', or 'release')" >&2
             exit 1
           fi
 
