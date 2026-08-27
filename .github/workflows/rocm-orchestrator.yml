@@ -1,7 +1,7 @@
 name: ROCm Orchestrator
 
 # Called by DME/DCM build workflows after a successful build + publish.
-# Reusable workflow — runs synchronously in the caller's context.
+# Can also be triggered manually from the Actions tab for standalone testing.
 
 on:
   workflow_call:
@@ -22,6 +22,27 @@ on:
       result:
         description: 'Validation result (pass or fail)'
         value: ${{ jobs.validate.outputs.result }}
+
+  workflow_dispatch:
+    inputs:
+      component:
+        type: choice
+        options:
+          - dme
+          - dcm
+        default: dme
+        description: 'Component to validate'
+      scenario:
+        type: choice
+        options:
+          - nightly
+          - pre-release
+        default: nightly
+        description: 'Build scenario'
+      s3_prefix:
+        type: string
+        default: ''
+        description: 'S3 prefix (leave blank for standalone test)'
 
 permissions:
   contents: read
@@ -64,3 +85,18 @@ jobs:
             echo "result=fail" >> "$GITHUB_OUTPUT"
             echo "gpu-operator: NOT ACCESSIBLE"
           fi
+
+      - name: Summary
+        if: always() && github.event_name == 'workflow_dispatch'
+        run: |
+          {
+            echo "## ROCm Orchestrator — \`${{ inputs.component }}\`"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Component | \`${{ inputs.component }}\` |"
+            echo "| Scenario | \`${{ inputs.scenario }}\` |"
+            echo "| S3 prefix | \`${{ inputs.s3_prefix || 'n/a (standalone)' }}\` |"
+            echo "| gpu-operator access | ${{ steps.checkout.outcome }} |"
+            echo "| Result | ${{ steps.verdict.outputs.result }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
