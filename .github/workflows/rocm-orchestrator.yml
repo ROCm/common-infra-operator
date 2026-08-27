@@ -1,0 +1,66 @@
+name: ROCm Orchestrator
+
+# Called by DME/DCM build workflows after a successful build + publish.
+# Reusable workflow — runs synchronously in the caller's context.
+
+on:
+  workflow_call:
+    inputs:
+      component:
+        required: true
+        type: string
+        description: 'Component name (dme or dcm)'
+      scenario:
+        required: true
+        type: string
+        description: 'Build scenario (nightly, pre-release, pull_request)'
+      s3_prefix:
+        required: true
+        type: string
+        description: 'S3 path prefix where build artifacts were uploaded'
+    outputs:
+      result:
+        description: 'Validation result (pass or fail)'
+        value: ${{ jobs.validate.outputs.result }}
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate ${{ inputs.component }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      result: ${{ steps.verdict.outputs.result }}
+    steps:
+      - name: Log context
+        run: |
+          echo "=== Orchestrator triggered ==="
+          echo "Component  : ${{ inputs.component }}"
+          echo "Scenario   : ${{ inputs.scenario }}"
+          echo "S3 prefix  : ${{ inputs.s3_prefix }}"
+          echo "Repository : ${GITHUB_REPOSITORY}"
+          echo "Event      : ${GITHUB_EVENT_NAME}"
+          echo "Run ID     : ${GITHUB_RUN_ID}"
+
+      - name: Checkout gpu-operator
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: ROCm/gpu-operator
+          path: gpu-operator
+
+      - name: Verdict
+        if: always()
+        id: verdict
+        run: |
+          if [ "${{ steps.checkout.outcome }}" = "success" ]; then
+            echo "result=pass" >> "$GITHUB_OUTPUT"
+            echo "gpu-operator: ACCESSIBLE"
+            ls gpu-operator/ || true
+          else
+            echo "result=fail" >> "$GITHUB_OUTPUT"
+            echo "gpu-operator: NOT ACCESSIBLE"
+          fi
