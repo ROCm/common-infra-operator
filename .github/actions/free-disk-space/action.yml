@@ -1,0 +1,24 @@
+name: Free up runner disk space
+description: Removes ~30GB of pre-installed toolchains from GitHub-hosted runners
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        echo "Disk before cleanup:"
+        df -h /
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+          /opt/hostedtoolcache/CodeQL /usr/local/share/boost \
+          "${AGENT_TOOLSDIRECTORY:-/opt/hostedtoolcache}" || true
+        sudo rm -rf \
+          /usr/share/swift /usr/local/share/powershell /usr/lib/mono \
+          /usr/local/julia* /opt/az /usr/share/google-cloud-sdk \
+          /usr/lib/jvm /usr/local/share/chromium /usr/share/miniconda || true
+        sudo apt-get remove -y 'llvm-*' 'clang-*' 'mono-*' \
+          azure-cli google-cloud-cli 2>/dev/null || true
+        sudo apt-get autoremove -y || true
+        sudo apt-get clean || true
+        sudo docker image prune --all --force || true
+        echo "Disk after cleanup:"
+        df -h /

@@ -1,0 +1,285 @@
+name: ROCm Publish
+
+# Downloads build artifacts, uploads to S3, pushes Docker images to Docker Hub,
+# and saves a dedup cache marker.
+#
+# Build jobs must upload artifacts with their final names — this workflow uploads as-is.
+# All docker_images values must be pre-expanded by the caller.
+#
+# Callers must set these permissions: contents: read, id-token: write, actions: write
+
+on:
+  workflow_call:
+    inputs:
+      component:
+        description: 'Component name (dme, dcm, dra, etc.)'
+        required: true
+        type: string
+      image_tag:
+        description: 'Image tag (e.g. 10.1.0a20260902)'
+        required: true
+        type: string
+      version:
+        description: 'Project version (e.g. v1.0.0)'
+        required: true
+        type: string
+      suffix:
+        description: 'Artifact suffix (e.g. 10.1.0a20260902, 3, a1b2c3d4)'
+        required: true
+        type: string
+      s3_prefix:
+        description: 'Full S3 prefix path (e.g. device-config-manager/nightly/20260902)'
+        required: true
+        type: string
+      trigger_sha:
+        description: 'Git SHA of the triggering commit'
+        required: true
+        type: string
+      s3_bucket:
+        description: 'S3 bucket name'
+        required: true
+        type: string
+      artifact_names:
+        description: >
+          Comma-separated GHA artifact names to download.
+          e.g. "dcm-image-10.1.0a20260902"
+        required: true
+        type: string
+      s3_file_globs:
+        description: >
+          Comma-separated glob patterns for files to upload to S3.
+          e.g. "*.tgz" or "*.tar.gz,*_amd64.deb,*.tgz"
+        required: true
+        type: string
+      docker_images:
+        description: >
+          Newline-separated entries: tarball_glob|src_tag|dest_tag|optional
+          tarball_glob = glob matching the tarball to docker load.
+          src_tag = image:tag inside the tarball after loading.
+          dest_tag = target image:tag for docker push.
+          optional = "true" to skip if tarball not found.
+          Example:
+            config-manager-*.tgz|rocm/device-config-manager:10.1.0a20260902|amdpsdo/device-config-manager:v1.0.0-10.1.0a20260902|false
+        required: false
+        type: string
+        default: ''
+    secrets:
+      ROCK_CI_S3_SECRET:
+        required: true
+      DOCKER_TOKEN:
+        required: true
+      DOCKER_USERNAME:
+        required: true
+
+  workflow_dispatch:
+    inputs:
+      component:
+        required: true
+        type: string
+      image_tag:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      suffix:
+        required: true
+        type: string
+      s3_prefix:
+        required: true
+        type: string
+      trigger_sha:
+        required: false
+        type: string
+        default: 'deadbeef'
+      s3_bucket:
+        required: true
+        type: string
+      artifact_names:
+        required: true
+        type: string
+      s3_file_globs:
+        required: true
+        type: string
+      docker_images:
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  id-token: write
+  actions: write
+
+env:
+  S3_BUCKET: ${{ inputs.s3_bucket }}
+
+jobs:
+  publish:
+    name: Publish artifacts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Validate inputs
+        run: |
+          set -euo pipefail
+          ERRORS=0
+          for var in COMPONENT S3_PREFIX ARTIFACT_NAMES S3_FILE_GLOBS; do
+            if [ -z "${!var}" ]; then
+              echo "::error::Required input '${var}' is empty"
+              ERRORS=$((ERRORS + 1))
+            fi
+          done
+          [ "${ERRORS}" -gt 0 ] && exit 1 || true
+        env:
+          COMPONENT: ${{ inputs.component }}
+          S3_PREFIX: ${{ inputs.s3_prefix }}
+          ARTIFACT_NAMES: ${{ inputs.artifact_names }}
+          S3_FILE_GLOBS: ${{ inputs.s3_file_globs }}
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Verify expected artifacts
+        env:
+          ARTIFACT_NAMES: ${{ inputs.artifact_names }}
+        run: |
+          set -euo pipefail
+          echo "Downloaded artifacts:"
+          ls -lh artifacts/
+          if [ -z "$(ls -A artifacts/)" ]; then
+            echo "::error::No artifacts found. Expected: ${ARTIFACT_NAMES}"
+            exit 1
+          fi
+
+      - name: Validate S3 prerequisites
+        env:
+          HAS_ARN: ${{ secrets.ROCK_CI_S3_SECRET != '' }}
+        run: |
+          if [ "${HAS_ARN}" != "true" ]; then
+            echo "::error::ROCK_CI_S3_SECRET secret is not set"
+            exit 1
+          fi
+          if [ -z "${S3_BUCKET}" ]; then
+            echo "::error::THEROCK_BUCKET_NAME variable is not set"
+            exit 1
+          fi
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.ROCK_CI_S3_SECRET }}
+          aws-region: us-east-1
+
+      - name: Upload artifacts to S3
+        id: s3-upload
+        env:
+          S3_PREFIX: ${{ inputs.s3_prefix }}
+          S3_FILE_GLOBS: ${{ inputs.s3_file_globs }}
+        run: |
+          set -euo pipefail
+          cd artifacts
+
+          UPLOADED=0
+          IFS=',' read -ra GLOBS <<< "${S3_FILE_GLOBS}"
+          shopt -s nullglob
+          for glob in "${GLOBS[@]}"; do
+            glob=$(echo "${glob}" | xargs)
+            for f in ${glob}; do
+              echo "Uploading: ${f} → s3://${S3_BUCKET}/${S3_PREFIX}/${f}"
+              aws s3 cp "${f}" "s3://${S3_BUCKET}/${S3_PREFIX}/${f}" --no-progress
+              UPLOADED=$((UPLOADED + 1))
+            done
+          done
+          shopt -u nullglob
+
+          if [ "${UPLOADED}" -eq 0 ]; then
+            echo "::error::No files matched S3 upload globs: ${S3_FILE_GLOBS}"
+            exit 1
+          fi
+
+          echo "Uploaded ${UPLOADED} file(s) to s3://${S3_BUCKET}/${S3_PREFIX}/"
+          aws s3 ls "s3://${S3_BUCKET}/${S3_PREFIX}/" --human-readable || true
+
+      - name: Login to Docker Hub
+        if: inputs.docker_images != '' && steps.s3-upload.outcome == 'success'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Push Docker images
+        id: registry-push
+        if: inputs.docker_images != '' && steps.s3-upload.outcome == 'success'
+        env:
+          DOCKER_IMAGES: ${{ inputs.docker_images }}
+        run: |
+          set -euo pipefail
+          cd artifacts
+          PUSHED=0
+
+          while IFS= read -r entry; do
+            [ -z "${entry}" ] && continue
+            IFS='|' read -r TARBALL_GLOB SRC_TAG DEST_TAG OPTIONAL <<< "${entry}"
+
+            shopt -s nullglob
+            TARBALL=$(ls ${TARBALL_GLOB} 2>/dev/null | head -1 || true)
+            shopt -u nullglob
+
+            if [ -z "${TARBALL}" ]; then
+              if [ "${OPTIONAL}" = "true" ]; then
+                echo "Skipping optional image (tarball not found): ${TARBALL_GLOB}"
+                continue
+              else
+                echo "::error::Tarball not found matching: ${TARBALL_GLOB}"
+                exit 1
+              fi
+            fi
+
+            echo "Loading: ${TARBALL}"
+            docker load < "${TARBALL}"
+
+            echo "Tagging: docker.io/${SRC_TAG} → docker.io/${DEST_TAG}"
+            docker tag "docker.io/${SRC_TAG}" "docker.io/${DEST_TAG}"
+
+            echo "Pushing: docker.io/${DEST_TAG}"
+            docker push "docker.io/${DEST_TAG}"
+            PUSHED=$((PUSHED + 1))
+          done <<< "${DOCKER_IMAGES}"
+
+          echo "Pushed ${PUSHED} image(s)"
+
+      - name: Create dedup marker
+        if: always() && steps.s3-upload.outcome == 'success' && (inputs.docker_images == '' || steps.registry-push.outcome == 'success')
+        run: mkdir -p .dedup-marker && echo "ok" > .dedup-marker/ok
+
+      - name: Save dedup marker to cache
+        if: always() && steps.s3-upload.outcome == 'success' && (inputs.docker_images == '' || steps.registry-push.outcome == 'success')
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          key: dedup-${{ inputs.component }}-${{ inputs.image_tag }}-${{ inputs.trigger_sha }}
+          path: .dedup-marker
+
+      - name: Publish summary
+        if: always()
+        env:
+          COMPONENT: ${{ inputs.component }}
+          VERSION: ${{ inputs.version }}
+          SUFFIX: ${{ inputs.suffix }}
+          S3_PREFIX: ${{ inputs.s3_prefix }}
+          S3_RESULT: ${{ steps.s3-upload.outcome }}
+          REGISTRY_RESULT: ${{ steps.registry-push.outcome }}
+        run: |
+          {
+            echo "## ${COMPONENT} Publish — \`${VERSION}-${SUFFIX}\`"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| S3 upload | ${S3_RESULT:-skipped} |"
+            echo "| Registry push | ${REGISTRY_RESULT:-skipped} |"
+            echo "| S3 location | \`s3://${S3_BUCKET}/${S3_PREFIX}/\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

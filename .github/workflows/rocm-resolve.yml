@@ -1,0 +1,283 @@
+name: ROCm Resolve
+
+# Resolves ROCm tarball URL, derives image tag / S3 prefix / suffix, checks dedup
+# cache, and derives sequential build number for dispatch triggers.
+#
+# Callers must set these permissions: contents: read, id-token: write, actions: write
+
+on:
+  workflow_call:
+    inputs:
+      component:
+        description: 'Component name (dme, dcm, dra, gpu-operator, kmm, etc.)'
+        required: true
+        type: string
+      version:
+        description: 'Project version (e.g. v1.0.0, v1.5.2)'
+        required: true
+        type: string
+      tarball_url_default:
+        description: 'Default tarball URL (used as fallback for PR and dispatch triggers)'
+        required: true
+        type: string
+      s3_component_prefix:
+        description: 'S3 path prefix (e.g. device-metrics-exporter, device-config-manager)'
+        required: true
+        type: string
+      s3_bucket:
+        description: 'S3 bucket name'
+        required: true
+        type: string
+      trigger_event:
+        description: 'Trigger event name (schedule, pull_request, workflow_dispatch)'
+        required: true
+        type: string
+      trigger_sha:
+        description: 'Git SHA of the triggering commit'
+        required: true
+        type: string
+      input_tarball_url:
+        description: 'User-provided tarball URL (workflow_dispatch). Empty = auto-detect.'
+        required: false
+        type: string
+        default: ''
+      input_image_tag:
+        description: 'User-provided image tag (workflow_dispatch). Empty = auto-derive.'
+        required: false
+        type: string
+        default: ''
+      force_rebuild:
+        description: 'Force rebuild even if dedup cache hits'
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      ROCK_CI_S3_SECRET:
+        required: false
+    outputs:
+      rocm_tarball_url:
+        description: 'Resolved tarball URL'
+        value: ${{ jobs.resolve.outputs.rocm_tarball_url }}
+      image_tag:
+        description: 'Image tag derived from tarball'
+        value: ${{ jobs.resolve.outputs.image_tag }}
+      s3_prefix:
+        description: 'Full S3 prefix path for uploads'
+        value: ${{ jobs.resolve.outputs.s3_prefix }}
+      version:
+        description: 'Component version'
+        value: ${{ jobs.resolve.outputs.version }}
+      suffix:
+        description: 'Artifact suffix (tarball version, SHA, or build number)'
+        value: ${{ jobs.resolve.outputs.suffix }}
+      scenario:
+        description: 'nightly | pull_request | pre-release'
+        value: ${{ jobs.resolve.outputs.scenario }}
+      build_needed:
+        description: 'true if build should proceed'
+        value: ${{ jobs.resolve.outputs.build_needed }}
+
+  workflow_dispatch:
+    inputs:
+      component:
+        description: 'Component name for standalone testing'
+        required: true
+        type: string
+      version:
+        description: 'Project version'
+        required: true
+        type: string
+      tarball_url_default:
+        description: 'Default tarball URL'
+        required: true
+        type: string
+      s3_component_prefix:
+        description: 'S3 path prefix'
+        required: true
+        type: string
+      s3_bucket:
+        description: 'S3 bucket name'
+        required: true
+        type: string
+      trigger_event:
+        description: 'Simulated trigger event (schedule, pull_request, workflow_dispatch)'
+        required: true
+        type: choice
+        options:
+          - schedule
+          - pull_request
+          - workflow_dispatch
+      trigger_sha:
+        description: 'Simulated SHA'
+        required: false
+        type: string
+        default: 'deadbeef'
+      input_tarball_url:
+        description: 'Tarball URL override'
+        required: false
+        type: string
+        default: ''
+      input_image_tag:
+        description: 'Image tag override'
+        required: false
+        type: string
+        default: ''
+      force_rebuild:
+        description: 'Force rebuild'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+  actions: write
+
+env:
+  S3_BUCKET: ${{ inputs.s3_bucket }}
+
+jobs:
+  resolve:
+    name: Resolve tarball + image tag
+    runs-on: ubuntu-24.04
+    outputs:
+      rocm_tarball_url: ${{ steps.resolve.outputs.rocm_tarball_url }}
+      image_tag: ${{ steps.resolve.outputs.image_tag }}
+      s3_prefix: ${{ steps.resolve.outputs.s3_prefix }}
+      version: ${{ steps.resolve.outputs.version }}
+      suffix: ${{ steps.resolve.outputs.suffix }}
+      scenario: ${{ steps.resolve.outputs.scenario }}
+      build_needed: ${{ steps.dedup.outputs.cache-hit != 'true' || inputs.force_rebuild == true }}
+    steps:
+      - name: Configure AWS credentials for dispatch counter
+        if: inputs.trigger_event == 'workflow_dispatch'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.ROCK_CI_S3_SECRET }}
+          aws-region: us-east-1
+
+      - name: Resolve trigger inputs
+        id: resolve
+        env:
+          COMPONENT: ${{ inputs.component }}
+          VERSION: ${{ inputs.version }}
+          TARBALL_URL_DEFAULT: ${{ inputs.tarball_url_default }}
+          S3_COMPONENT_PREFIX: ${{ inputs.s3_component_prefix }}
+          TRIGGER_EVENT: ${{ inputs.trigger_event }}
+          TRIGGER_SHA: ${{ inputs.trigger_sha }}
+          INPUT_URL: ${{ inputs.input_tarball_url }}
+          INPUT_IMAGE_TAG: ${{ inputs.input_image_tag }}
+        run: |
+          set -euo pipefail
+          NIGHTLY_CDN_BASE="https://nightly.repo.amd.com/rocm/core/tarball"
+
+          case "${TRIGGER_EVENT}" in
+          schedule)
+            TARBALL_NAME=$(
+              curl -fsSL "${NIGHTLY_CDN_BASE}/" 2>/dev/null \
+              | grep -oP 'therock-dist-linux-multiarch-\d+\.\d+\.\d+a\d{8}\.tar\.gz' \
+              | sed 's/.*a\([0-9]\{8\}\)\.tar\.gz/\1 &/' \
+              | sort -rn \
+              | awk 'NR==1{print $2}'
+            )
+            if [ -z "${TARBALL_NAME}" ]; then
+              echo "::error::Could not detect latest nightly tarball from CDN index"
+              exit 1
+            fi
+            TARBALL_URL="${NIGHTLY_CDN_BASE}/${TARBALL_NAME}"
+            IMAGE_TAG=$(echo "${TARBALL_NAME}" \
+              | sed 's/therock-dist-linux-multiarch-//;s/\.tar\.gz//')
+            DATE=$(echo "${IMAGE_TAG}" | grep -oP '(?<=a)\d{8}')
+            SUFFIX="${IMAGE_TAG}"
+            S3_PREFIX="${S3_COMPONENT_PREFIX}/nightly/${DATE}"
+            SCENARIO="nightly"
+            ;;
+
+          pull_request)
+            TARBALL_URL="${INPUT_URL:-${TARBALL_URL_DEFAULT}}"
+            IMAGE_TAG="${VERSION}"
+            SUFFIX=$(echo "${TRIGGER_SHA}" | cut -c1-8)
+            S3_PREFIX=""
+            SCENARIO="pull_request"
+            ;;
+
+          workflow_dispatch)
+            TARBALL_URL="${INPUT_URL:-${TARBALL_URL_DEFAULT}}"
+            BASENAME=$(basename "${TARBALL_URL}" .tar.gz)
+            IMAGE_TAG="${INPUT_IMAGE_TAG:-${BASENAME#therock-dist-linux-multiarch-}}"
+
+            if ! LISTING=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/pre-release/" 2>&1); then
+              echo "::error::Failed to query S3 for build counter: ${LISTING}"
+              exit 1
+            fi
+            LAST_N=$(echo "${LISTING}" | grep -oP "${VERSION}-\K\d+" | sort -n | tail -1 || true)
+            SUFFIX=$(( ${LAST_N:-0} + 1 ))
+            S3_PREFIX="${S3_COMPONENT_PREFIX}/pre-release/${VERSION}-${SUFFIX}"
+            SCENARIO="pre-release"
+            ;;
+
+          *)
+            echo "::error::Unknown trigger event: ${TRIGGER_EVENT}"
+            exit 1
+            ;;
+          esac
+
+          for var in TARBALL_URL IMAGE_TAG VERSION; do
+            if [ -z "${!var}" ]; then
+              echo "::error::${var} is empty after resolve"
+              exit 1
+            fi
+          done
+
+          echo "rocm_tarball_url=${TARBALL_URL}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "s3_prefix=${S3_PREFIX}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "suffix=${SUFFIX}" >> "$GITHUB_OUTPUT"
+          echo "scenario=${SCENARIO}" >> "$GITHUB_OUTPUT"
+
+          echo "::notice::Component: ${COMPONENT}"
+          echo "::notice::ROCm tarball: ${TARBALL_URL}"
+          echo "::notice::Image tag: ${IMAGE_TAG}"
+          echo "::notice::Version: ${VERSION}"
+          echo "::notice::Suffix: ${SUFFIX}"
+          echo "::notice::Scenario: ${SCENARIO}"
+          echo "::notice::S3 prefix: ${S3_PREFIX}"
+
+      - name: Check dedup cache
+        id: dedup
+        if: inputs.trigger_event != 'pull_request'
+        continue-on-error: true
+        uses: actions/cache/restore@v4
+        with:
+          key: dedup-${{ inputs.component }}-${{ steps.resolve.outputs.image_tag }}-${{ inputs.trigger_sha }}
+          path: .dedup-marker
+          lookup-only: true
+
+      - name: Dedup summary
+        if: steps.dedup.outputs.cache-hit == 'true' && inputs.force_rebuild != true
+        run: |
+          {
+            echo "## ${{ inputs.component }} Build — Skipped (dedup)"
+            echo ""
+            echo "Build already succeeded for tag \`${{ steps.resolve.outputs.image_tag }}\` at SHA \`${{ inputs.trigger_sha }}\`."
+            echo "No rebuild needed. Use \`force_rebuild: true\` to override."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Resolve summary
+        if: steps.dedup.outputs.cache-hit != 'true' || inputs.force_rebuild == true
+        run: |
+          {
+            echo "## ${{ inputs.component }} Build — Resolved"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Component | \`${{ inputs.component }}\` |"
+            echo "| Scenario | \`${{ steps.resolve.outputs.scenario }}\` |"
+            echo "| ROCm tarball | \`${{ steps.resolve.outputs.rocm_tarball_url }}\` |"
+            echo "| Image tag | \`${{ steps.resolve.outputs.image_tag }}\` |"
+            echo "| Version | \`${{ steps.resolve.outputs.version }}\` |"
+            echo "| Suffix | \`${{ steps.resolve.outputs.suffix }}\` |"
+            echo "| S3 prefix | \`${{ steps.resolve.outputs.s3_prefix }}\` |"
+            echo "| Build needed | \`true\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
