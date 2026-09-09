@@ -1,0 +1,179 @@
+name: Nightly Summary
+
+# Posts a GitHub Actions step summary for a nightly build run.
+# Includes stage results, S3 location, and commits since the last nightly.
+#
+# Designed to be called as the final job in a nightly build workflow.
+
+on:
+  workflow_call:
+    inputs:
+      component:
+        description: 'Component name (gpu-operator, kmm, etc.)'
+        required: true
+        type: string
+      push_tag:
+        description: 'Image/artifact tag (e.g. v0.0.1-20260909)'
+        required: true
+        type: string
+      version:
+        description: 'Project version (e.g. v0.0.1)'
+        required: true
+        type: string
+      s3_prefix:
+        description: 'S3 prefix where artifacts were uploaded'
+        required: true
+        type: string
+      s3_bucket:
+        description: 'S3 bucket name (for display)'
+        required: true
+        type: string
+      trigger_sha:
+        description: 'Git SHA of the triggering commit'
+        required: true
+        type: string
+      prev_nightly_sha:
+        description: 'SHA of the previous successful nightly (empty if none)'
+        required: false
+        type: string
+        default: ''
+      commit_log:
+        description: 'Commits since last nightly (one per line)'
+        required: false
+        type: string
+        default: ''
+      stages:
+        description: >
+          Newline-separated stage results: name|result
+          e.g. "Build Images|success\nBuild Helm|success\nPublish|skipped"
+        required: true
+        type: string
+      docker_images:
+        description: >
+          Newline-separated DockerHub images pushed (for display).
+          e.g. "amdpsdo/gpu-operator:v0.0.1-20260909"
+        required: false
+        type: string
+        default: ''
+
+  workflow_dispatch:
+    inputs:
+      component:
+        required: true
+        type: string
+      push_tag:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      s3_prefix:
+        required: true
+        type: string
+      s3_bucket:
+        required: true
+        type: string
+      trigger_sha:
+        required: false
+        type: string
+        default: 'deadbeef'
+      prev_nightly_sha:
+        required: false
+        type: string
+        default: ''
+      commit_log:
+        required: false
+        type: string
+        default: ''
+      stages:
+        required: true
+        type: string
+      docker_images:
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  summary:
+    name: Nightly summary
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Post summary
+        env:
+          COMPONENT: ${{ inputs.component }}
+          PUSH_TAG: ${{ inputs.push_tag }}
+          VERSION: ${{ inputs.version }}
+          S3_PREFIX: ${{ inputs.s3_prefix }}
+          S3_BUCKET: ${{ inputs.s3_bucket }}
+          TRIGGER_SHA: ${{ inputs.trigger_sha }}
+          PREV_SHA: ${{ inputs.prev_nightly_sha }}
+          COMMIT_LOG: ${{ inputs.commit_log }}
+          STAGES: ${{ inputs.stages }}
+          DOCKER_IMAGES: ${{ inputs.docker_images }}
+        run: |
+          set -euo pipefail
+
+          # Determine overall result from stages
+          OVERALL="success"
+          while IFS='|' read -r name result; do
+            [ -z "${name}" ] && continue
+            if [ "${result}" = "failure" ]; then
+              OVERALL="failure"
+              break
+            fi
+          done <<< "${STAGES}"
+
+          {
+            if [ "${OVERALL}" = "success" ]; then
+              echo "## ${COMPONENT} Nightly — \`${PUSH_TAG}\` :white_check_mark:"
+            else
+              echo "## ${COMPONENT} Nightly — \`${PUSH_TAG}\` :x:"
+            fi
+
+            echo ""
+            echo "### Stage Results"
+            echo "| Stage | Result |"
+            echo "|---|---|"
+            while IFS='|' read -r name result; do
+              [ -z "${name}" ] && continue
+              case "${result}" in
+                success)  icon=":white_check_mark:" ;;
+                failure)  icon=":x:" ;;
+                skipped)  icon=":next_track_button:" ;;
+                *)        icon=":grey_question:" ;;
+              esac
+              echo "| ${name} | ${icon} ${result} |"
+            done <<< "${STAGES}"
+
+            echo ""
+            echo "### Build Details"
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Component | \`${COMPONENT}\` |"
+            echo "| Version | \`${VERSION}\` |"
+            echo "| Tag | \`${PUSH_TAG}\` |"
+            echo "| SHA | \`${TRIGGER_SHA}\` |"
+            echo "| S3 | \`s3://${S3_BUCKET}/${S3_PREFIX}/\` |"
+            if [ -n "${PREV_SHA}" ]; then
+              echo "| Previous nightly | \`${PREV_SHA}\` |"
+            fi
+
+            if [ -n "${DOCKER_IMAGES}" ]; then
+              echo ""
+              echo "### Docker Images"
+              echo '```'
+              echo "${DOCKER_IMAGES}"
+              echo '```'
+            fi
+
+            if [ -n "${COMMIT_LOG}" ]; then
+              echo ""
+              echo "### Commits Since Last Nightly"
+              echo '```'
+              echo "${COMMIT_LOG}"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

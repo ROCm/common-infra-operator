@@ -1,0 +1,241 @@
+name: Nightly Resolve
+
+# Resolves build parameters for non-tarball nightly builds (gpu-operator, KMM, etc.).
+# Uses date as the image tag, computes S3 prefix, checks dedup cache, and retrieves
+# the commit log since the previous successful nightly.
+#
+# Callers must set these permissions: contents: read, actions: write
+
+on:
+  workflow_call:
+    inputs:
+      component:
+        description: 'Component name (gpu-operator, kmm, network-operator, etc.)'
+        required: true
+        type: string
+      version:
+        description: 'Project version (e.g. v0.0.1)'
+        required: true
+        type: string
+      s3_component_prefix:
+        description: 'S3 path prefix (e.g. gpu-operator, kernel-module-management)'
+        required: true
+        type: string
+      trigger_event:
+        description: 'Trigger event name (schedule, workflow_dispatch)'
+        required: true
+        type: string
+      trigger_sha:
+        description: 'Git SHA of the triggering commit'
+        required: true
+        type: string
+      force_rebuild:
+        description: 'Force rebuild even if dedup cache hits'
+        required: false
+        type: boolean
+        default: false
+      nightly_workflow_file:
+        description: 'Filename of the nightly workflow in the calling repo (for commit range lookup)'
+        required: false
+        type: string
+        default: 'nightly-build.yml'
+
+    outputs:
+      push_tag:
+        description: 'Image/artifact tag: {version}-{date}'
+        value: ${{ jobs.resolve.outputs.push_tag }}
+      s3_prefix:
+        description: 'Full S3 prefix path for uploads'
+        value: ${{ jobs.resolve.outputs.s3_prefix }}
+      version:
+        description: 'Component version (pass-through)'
+        value: ${{ jobs.resolve.outputs.version }}
+      date:
+        description: 'Build date (YYYYMMDD)'
+        value: ${{ jobs.resolve.outputs.date }}
+      suffix:
+        description: 'Artifact suffix (same as date for nightly)'
+        value: ${{ jobs.resolve.outputs.suffix }}
+      scenario:
+        description: 'Always nightly'
+        value: ${{ jobs.resolve.outputs.scenario }}
+      build_needed:
+        description: 'true if build should proceed'
+        value: ${{ jobs.resolve.outputs.build_needed }}
+      prev_nightly_sha:
+        description: 'SHA of the last successful nightly (empty if none)'
+        value: ${{ jobs.resolve.outputs.prev_nightly_sha }}
+      commit_log:
+        description: 'Commits since last successful nightly (one per line, max 50)'
+        value: ${{ jobs.resolve.outputs.commit_log }}
+
+  workflow_dispatch:
+    inputs:
+      component:
+        description: 'Component name'
+        required: true
+        type: string
+      version:
+        description: 'Project version'
+        required: true
+        type: string
+      s3_component_prefix:
+        description: 'S3 path prefix'
+        required: true
+        type: string
+      trigger_event:
+        description: 'Simulated trigger event'
+        required: true
+        type: choice
+        options:
+          - schedule
+          - workflow_dispatch
+      trigger_sha:
+        description: 'Simulated SHA'
+        required: false
+        type: string
+        default: 'deadbeef'
+      force_rebuild:
+        description: 'Force rebuild'
+        required: false
+        type: boolean
+        default: true
+      nightly_workflow_file:
+        description: 'Nightly workflow filename in calling repo'
+        required: false
+        type: string
+        default: 'nightly-build.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  resolve:
+    name: Resolve nightly parameters
+    runs-on: ubuntu-24.04
+    outputs:
+      push_tag: ${{ steps.resolve.outputs.push_tag }}
+      s3_prefix: ${{ steps.resolve.outputs.s3_prefix }}
+      version: ${{ steps.resolve.outputs.version }}
+      date: ${{ steps.resolve.outputs.date }}
+      suffix: ${{ steps.resolve.outputs.suffix }}
+      scenario: ${{ steps.resolve.outputs.scenario }}
+      build_needed: ${{ steps.dedup.outputs.cache-hit != 'true' || inputs.force_rebuild == true }}
+      prev_nightly_sha: ${{ steps.prev-nightly.outputs.prev_sha }}
+      commit_log: ${{ steps.commit-log.outputs.log }}
+    steps:
+      - name: Resolve parameters
+        id: resolve
+        env:
+          VERSION: ${{ inputs.version }}
+          S3_COMPONENT_PREFIX: ${{ inputs.s3_component_prefix }}
+        run: |
+          set -euo pipefail
+          DATE=$(date -u +%Y%m%d)
+          PUSH_TAG="${VERSION}-${DATE}"
+          S3_PREFIX="${S3_COMPONENT_PREFIX}/nightly/${DATE}"
+
+          echo "push_tag=${PUSH_TAG}" >> "$GITHUB_OUTPUT"
+          echo "s3_prefix=${S3_PREFIX}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "date=${DATE}" >> "$GITHUB_OUTPUT"
+          echo "suffix=${DATE}" >> "$GITHUB_OUTPUT"
+          echo "scenario=nightly" >> "$GITHUB_OUTPUT"
+
+          echo "::notice::Component: ${{ inputs.component }}"
+          echo "::notice::Push tag: ${PUSH_TAG}"
+          echo "::notice::S3 prefix: ${S3_PREFIX}"
+          echo "::notice::Version: ${VERSION}"
+          echo "::notice::Date: ${DATE}"
+
+      - name: Find previous successful nightly
+        id: prev-nightly
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKFLOW_FILE: ${{ inputs.nightly_workflow_file }}
+        run: |
+          set -euo pipefail
+          PREV_SHA=$(
+            gh api "repos/${{ github.repository }}/actions/workflows/${WORKFLOW_FILE}/runs?status=success&per_page=1" \
+              --jq '.workflow_runs[0].head_sha // ""' 2>/dev/null || echo ""
+          )
+          echo "prev_sha=${PREV_SHA}" >> "$GITHUB_OUTPUT"
+          if [ -n "${PREV_SHA}" ]; then
+            echo "::notice::Previous nightly SHA: ${PREV_SHA}"
+          else
+            echo "::notice::No previous successful nightly found"
+          fi
+
+      - name: Compute commit log
+        id: commit-log
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREV_SHA: ${{ steps.prev-nightly.outputs.prev_sha }}
+          CURRENT_SHA: ${{ inputs.trigger_sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PREV_SHA}" ] || [ "${PREV_SHA}" = "${CURRENT_SHA}" ]; then
+            echo "log=" >> "$GITHUB_OUTPUT"
+            echo "::notice::No new commits (first nightly or same SHA)"
+          else
+            LOG=$(
+              gh api "repos/${{ github.repository }}/compare/${PREV_SHA}...${CURRENT_SHA}" \
+                --jq '[.commits[-50:] | .[] | (.sha[:8] + " " + (.commit.message | split("\n") | first))] | join("\n")' \
+                2>/dev/null || echo ""
+            )
+            # GHA outputs can't have literal newlines — encode as %0A
+            EOF_MARKER="COMMIT_LOG_$(date +%s)"
+            echo "log<<${EOF_MARKER}" >> "$GITHUB_OUTPUT"
+            echo "${LOG}" >> "$GITHUB_OUTPUT"
+            echo "${EOF_MARKER}" >> "$GITHUB_OUTPUT"
+
+            COMMIT_COUNT=$(echo "${LOG}" | grep -c . || true)
+            echo "::notice::${COMMIT_COUNT} commit(s) since last nightly"
+          fi
+
+      - name: Check dedup cache
+        id: dedup
+        if: inputs.trigger_event == 'schedule'
+        continue-on-error: true
+        uses: actions/cache/restore@v4
+        with:
+          key: dedup-${{ inputs.component }}-${{ steps.resolve.outputs.date }}-${{ inputs.trigger_sha }}
+          path: .dedup-marker
+          lookup-only: true
+
+      - name: Dedup summary
+        if: steps.dedup.outputs.cache-hit == 'true' && inputs.force_rebuild != true
+        run: |
+          {
+            echo "## ${{ inputs.component }} Nightly — Skipped (dedup)"
+            echo ""
+            echo "Build already succeeded for \`${{ steps.resolve.outputs.push_tag }}\` at SHA \`${{ inputs.trigger_sha }}\`."
+            echo "Use \`force_rebuild: true\` to override."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Resolve summary
+        if: steps.dedup.outputs.cache-hit != 'true' || inputs.force_rebuild == true
+        env:
+          COMMIT_LOG: ${{ steps.commit-log.outputs.log }}
+        run: |
+          {
+            echo "## ${{ inputs.component }} Nightly — Resolved"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Component | \`${{ inputs.component }}\` |"
+            echo "| Push tag | \`${{ steps.resolve.outputs.push_tag }}\` |"
+            echo "| Version | \`${{ steps.resolve.outputs.version }}\` |"
+            echo "| Date | \`${{ steps.resolve.outputs.date }}\` |"
+            echo "| S3 prefix | \`${{ steps.resolve.outputs.s3_prefix }}\` |"
+            echo "| Previous nightly | \`${{ steps.prev-nightly.outputs.prev_sha || 'none' }}\` |"
+            echo "| Build needed | \`true\` |"
+            if [ -n "${COMMIT_LOG}" ]; then
+              echo ""
+              echo "### Commits since last nightly"
+              echo '```'
+              echo "${COMMIT_LOG}"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
