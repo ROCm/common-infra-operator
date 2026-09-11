@@ -138,16 +138,21 @@ jobs:
           S3_FILE_GLOBS: ${{ inputs.s3_file_globs }}
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: Verify expected artifacts
         env:
           ARTIFACT_NAMES: ${{ inputs.artifact_names }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          mkdir -p artifacts
+          IFS=',' read -ra NAMES <<< "${ARTIFACT_NAMES}"
+          for name in "${NAMES[@]}"; do
+            name=$(echo "${name}" | xargs)
+            echo "Downloading artifact: ${name}"
+            gh run download "${{ github.run_id }}" \
+              --repo "${{ github.repository }}" \
+              --name "${name}" \
+              --dir artifacts
+          done
           echo "Downloaded artifacts:"
           ls -lh artifacts/
           if [ -z "$(ls -A artifacts/)" ]; then
