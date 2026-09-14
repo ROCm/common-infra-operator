@@ -1,0 +1,348 @@
+{
+    "release-matrix": [
+        {
+            "gpu-operator": "v1.0.0",
+            "operands": [
+                {
+                    "name": "device-plugin",
+                    "pod-name": "device-plugin"
+                },
+                {
+                    "name": "metrics-exporter",
+                    "pod-name": "metrics-exporter",
+                    "enable": "metricsExporter.enable",
+                    "image-key": "metricsExporter.image"
+                },
+                {
+                    "name": "node-labeller",
+                    "pod-name": "node-labeller",
+                    "enable": "devicePlugin.enableNodeLabeller",
+                    "image-key": "devicePlugin.nodeLabellerImage"
+                }
+            ],
+            "reference-driver": "6.2.4"
+        },
+        {
+            "gpu-operator": "v1.1.0",
+            "operands": [
+                {
+                    "name": "device-plugin",
+                    "pod-name": "device-plugin"
+                },
+                {
+                    "name": "metrics-exporter",
+                    "pod-name": "metrics-exporter",
+                    "enable": "metricsExporter.enable",
+                    "image-key": "metricsExporter.image"
+                },
+                {
+                    "name": "node-labeller",
+                    "pod-name": "node-labeller",
+                    "enable": "devicePlugin.enableNodeLabeller",
+                    "image-key": "devicePlugin.nodeLabellerImage"
+                }
+            ],
+            "reference-driver": "6.2.4"
+        },
+        {
+            "gpu-operator": "v1.2.0",
+            "operands": [
+                {
+                    "name": "device-plugin",
+                    "pod-name": "device-plugin"
+                },
+                {
+                    "name": "metrics-exporter",
+                    "pod-name": "metrics-exporter",
+                    "enable": "metricsExporter.enable",
+                    "image-key": "metricsExporter.image"
+                },
+                {
+                    "name": "node-labeller",
+                    "pod-name": "node-labeller",
+                    "enable": "devicePlugin.enableNodeLabeller",
+                    "image-key": "devicePlugin.nodeLabellerImage"
+                },
+                {
+                    "name": "test-runner",
+                    "pod-name": "test-runner",
+                    "enable": "testRunner.enable",
+                    "image-key": "testRunner.image"
+                }
+            ],
+            "reference-driver": "6.3"
+        },
+        {
+            "gpu-operator": "v1.2.1",
+            "operands": [
+                {
+                    "name": "device-plugin",
+                    "pod-name": "device-plugin"
+                },
+                {
+                    "name": "metrics-exporter",
+                    "pod-name": "metrics-exporter",
+                    "enable": "metricsExporter.enable",
+                    "image-key": "metricsExporter.image"
+                },
+                {
+                    "name": "node-labeller",
+                    "pod-name": "node-labeller",
+                    "enable": "devicePlugin.enableNodeLabeller",
+                    "image-key": "devicePlugin.nodeLabellerImage"
+                },
+                {
+                    "name": "test-runner",
+                    "pod-name": "test-runner",
+                    "enable": "testRunner.enable",
+                    "image-key": "testRunner.image"
+                }
+            ],
+            "reference-driver": "6.4"
+        },
+        {
+            "gpu-operator": "v1.2.2",
+            "operands": [
+                {
+                    "name": "device-plugin",
+                    "pod-name": "device-plugin"
+                },
+                {
+                    "name": "metrics-exporter",
+                    "pod-name": "metrics-exporter",
+                    "enable": "metricsExporter.enable",
+                    "image-key": "metricsExporter.image"
+                },
+                {
+                    "name": "node-labeller",
+                    "pod-name": "node-labeller",
+                    "enable": "devicePlugin.enableNodeLabeller",
+                    "image-key": "devicePlugin.nodeLabellerImage"
+                },
+                {
+                    "name": "test-runner",
+                    "pod-name": "test-runner",
+                    "enable": "testRunner.enable",
+                    "image-key": "testRunner.image"
+                }
+            ],
+            "reference-driver": "6.4.3"
+        },
+        {
+            "gpu-operator": "v1.3.0",
+            "operands": [
+                {
+                    "name": "device-plugin",
+                    "pod-name": "device-plugin"
+                },
+                {
+                    "name": "metrics-exporter",
+                    "pod-name": "metrics-exporter",
+                    "enable": "metricsExporter.enable",
+                    "image-key": "metricsExporter.image"
+                },
+                {
+                    "name": "node-labeller",
+                    "pod-name": "node-labeller",
+                    "enable": "devicePlugin.enableNodeLabeller",
+                    "image-key": "devicePlugin.nodeLabellerImage"
+                },
+                {
+                    "name": "test-runner",
+                    "pod-name": "test-runner",
+                    "enable": "testRunner.enable",
+                    "image-key": "testRunner.image"
+                },
+                {
+                    "name": "config-manager",
+                    "pod-name": "config-manager",
+                    "enable": "configManager.enable",
+                    "image-key": "configManager.image"
+                }
+            ],
+            "reference-driver": "7.0"
+        },
+        {
+            "gpu-operator": "v1.3.1",
+            "operands": [
+                {
+                    "name": "device-plugin",
+                    "pod-name": "device-plugin"
+                },
+                {
+                    "name": "metrics-exporter",
+                    "pod-name": "metrics-exporter",
+                    "enable": "metricsExporter.enable",
+                    "image-key": "metricsExporter.image"
+                },
+                {
+                    "name": "node-labeller",
+                    "pod-name": "node-labeller",
+                    "enable": "devicePlugin.enableNodeLabeller",
+                    "image-key": "devicePlugin.nodeLabellerImage"
+                },
+                {
+                    "name": "test-runner",
+                    "pod-name": "test-runner",
+                    "enable": "testRunner.enable",
+                    "image-key": "testRunner.image"
+                },
+                {
+                    "name": "config-manager",
+                    "pod-name": "config-manager",
+                    "enable": "configManager.enable",
+                    "image-key": "configManager.image"
+                }
+            ],
+            "reference-driver": "7.0.1"
+        },
+        {
+            "gpu-operator": "v1.4.0",
+            "operands": [
+                {
+                    "name": "device-plugin",
+                    "pod-name": "device-plugin"
+                },
+                {
+                    "name": "metrics-exporter",
+                    "pod-name": "metrics-exporter",
+                    "enable": "metricsExporter.enable",
+                    "image-key": "metricsExporter.image"
+                },
+                {
+                    "name": "node-labeller",
+                    "pod-name": "node-labeller",
+                    "enable": "devicePlugin.enableNodeLabeller",
+                    "image-key": "devicePlugin.nodeLabellerImage"
+                },
+                {
+                    "name": "test-runner",
+                    "pod-name": "test-runner",
+                    "enable": "testRunner.enable",
+                    "image-key": "testRunner.image"
+                },
+                {
+                    "name": "config-manager",
+                    "pod-name": "config-manager",
+                    "enable": "configManager.enable",
+                    "image-key": "configManager.image"
+                }
+            ],
+            "reference-driver": "7.0.2"
+        },
+        {
+            "gpu-operator": "v1.4.1",
+            "operands": [
+                {
+                    "name": "device-plugin",
+                    "pod-name": "device-plugin"
+                },
+                {
+                    "name": "metrics-exporter",
+                    "pod-name": "metrics-exporter",
+                    "enable": "metricsExporter.enable",
+                    "image-key": "metricsExporter.image"
+                },
+                {
+                    "name": "node-labeller",
+                    "pod-name": "node-labeller",
+                    "enable": "devicePlugin.enableNodeLabeller",
+                    "image-key": "devicePlugin.nodeLabellerImage"
+                },
+                {
+                    "name": "test-runner",
+                    "pod-name": "test-runner",
+                    "enable": "testRunner.enable",
+                    "image-key": "testRunner.image"
+                },
+                {
+                    "name": "config-manager",
+                    "pod-name": "config-manager",
+                    "enable": "configManager.enable",
+                    "image-key": "configManager.image"
+                }
+            ],
+            "reference-driver": "30.20.1"
+        },
+        {
+            "gpu-operator": "v1.5.0",
+            "operands": [
+                {
+                    "name": "device-plugin",
+                    "pod-name": "device-plugin"
+                },
+                {
+                    "name": "metrics-exporter",
+                    "pod-name": "metrics-exporter",
+                    "enable": "metricsExporter.enable",
+                    "image-key": "metricsExporter.image"
+                },
+                {
+                    "name": "node-labeller",
+                    "pod-name": "node-labeller",
+                    "enable": "devicePlugin.enableNodeLabeller",
+                    "image-key": "devicePlugin.nodeLabellerImage"
+                },
+                {
+                    "name": "test-runner",
+                    "pod-name": "test-runner",
+                    "enable": "testRunner.enable",
+                    "image-key": "testRunner.image"
+                },
+                {
+                    "name": "config-manager",
+                    "pod-name": "config-manager",
+                    "enable": "configManager.enable",
+                    "image-key": "configManager.image"
+                },
+                {
+                    "name": "dra-driver-image",
+                    "pod-name": "dra-driver",
+                    "enable": "draDriver.enable",
+                    "image-key": "draDriver.image"
+                }
+            ],
+            "reference-driver": "30.30"
+        },
+        {
+            "gpu-operator": "v1.5.1",
+            "reference-driver": "31.40",
+            "operands": [
+                {
+                    "name": "device-plugin",
+                    "pod-name": "device-plugin"
+                },
+                {
+                    "name": "metrics-exporter",
+                    "pod-name": "metrics-exporter",
+                    "enable": "metricsExporter.enable",
+                    "image-key": "metricsExporter.image"
+                },
+                {
+                    "name": "node-labeller",
+                    "pod-name": "node-labeller",
+                    "enable": "devicePlugin.enableNodeLabeller",
+                    "image-key": "devicePlugin.nodeLabellerImage"
+                },
+                {
+                    "name": "test-runner",
+                    "pod-name": "test-runner",
+                    "enable": "testRunner.enable",
+                    "image-key": "testRunner.image"
+                },
+                {
+                    "name": "config-manager",
+                    "pod-name": "config-manager",
+                    "enable": "configManager.enable",
+                    "image-key": "configManager.image"
+                },
+                {
+                    "name": "dra-driver-image",
+                    "pod-name": "dra-driver",
+                    "enable": "draDriver.enable",
+                    "image-key": "draDriver.image"
+                }
+            ]
+        }
+    ]
+}

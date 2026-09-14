@@ -1,0 +1,257 @@
+{
+    "workload-specs" : [
+        {
+            "workload-type" : "rocm-pytorch-benchmark",
+            "pre-pull" : true,
+            "spec" : {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "metadata": {
+                    "name": "pytorch-gpu-pod-1",
+                    "namespace": "default",
+                    "labels": {
+                        "purpose": "demo-wl"
+                    }
+                },
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "pytorch-gpu-container",
+                            "image": "docker.io/rocm/pytorch:rocm10.0_ubuntu24.04_py3.13_pytorch_release_2.13.0",
+                            "imagePullPolicy": "IfNotPresent",
+                            "workingDir": "/root",
+                            "command": [
+                                "/bin/bash",
+                                "-c",
+                                "--"
+                            ],
+                            "args": [
+                                "git clone https://github.com/ROCm/pytorch-micro-benchmarking.git;",
+                                "cd pytorch-micro-benchmarking;",
+                                "python micro_benchmarking_pytorch.py --network resnet50 --compile > /tmp/benchmark-output;",
+                                "sleep infinity & wait"
+                            ],
+                            "resources": {
+                                "limits": {
+                                    "amd.com/gpu": 0
+                                }
+                            }
+                        }
+                    ],
+                    "nodeSelector": {
+                        "kubernetes.io/hostname": "node"
+                    }
+                }
+            }
+        },
+        {
+            "workload-type" : "busybox-workload",
+            "pre-pull" : false,
+            "spec" : {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "metadata": {
+                    "name": "busybox-workload",
+                    "namespace": "default",
+                    "labels": {
+                        "purpose": "sample-workload"
+                    }
+                },
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "busybox-container",
+                            "image": "docker.io/busybox:1.36",
+                            "imagePullPolicy": "IfNotPresent",
+                            "workingDir": "/root",
+                            "command": [
+                                "/bin/sh",
+                                "-c",
+                                "--"
+                            ],
+                            "args": [
+                                "sleep infinity & wait"
+                            ],
+                            "resources": {
+                                "limits": {
+                                    "amd.com/gpu": 0
+                                }
+                            }
+                        }
+                    ],
+                    "nodeSelector": {
+                        "kubernetes.io/hostname": "node"
+                    }
+                }
+            }
+        },
+        {
+            "workload-type" : "alexnet-tf-gpu",
+            "pre-pull" : false,
+            "spec" : {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "metadata": {
+                    "name": "alexnet-tf-gpu-pod",
+                    "namespace": "default",
+                    "labels": {
+                        "purpose": "demo-alexnet"
+                    }
+                },
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "alexnet-tf-gpu-container",
+                            "image": "docker.io/rocm/tensorflow:latest",
+                            "imagePullPolicy": "IfNotPresent",
+                            "workingDir": "/root",
+                            "command": [
+                                "/bin/bash",
+                                "-c",
+                                "--"
+                            ],
+                            "args": [
+                                "sed -i '/from models.experimental import deepspeech/d' /benchmarks/scripts/tf_cnn_benchmarks/models/model_config.py;",
+                                "while :; do",
+                                "   python3 /benchmarks/scripts/tf_cnn_benchmarks/tf_cnn_benchmarks.py --model=alexnet;",
+                                "   sleep 5;",
+                                "done"
+                            ],
+                            "resources": {
+                                "limits": {
+                                    "amd.com/gpu": 0
+                                }
+                            }
+                        }
+                    ],
+                    "nodeSelector": {
+                        "kubernetes.io/hostname": "node"
+                    }
+                }
+            }
+        },
+        {
+            "workload-type" : "rocm-hip-gfx-stress",
+            "pre-pull" : true,
+            "spec" : {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "metadata": {
+                    "name": "rocm-hip-gfx-stress-pod",
+                    "namespace": "default",
+                    "labels": {
+                        "purpose": "gpu-stress"
+                    }
+                },
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "hip-stress-container",
+                            "image": "docker.io/rocm/dev-ubuntu-22.04:7.2.2",
+                            "imagePullPolicy": "IfNotPresent",
+                            "workingDir": "/tmp",
+                            "command": [
+                                "/bin/bash",
+                                "-c",
+                                "--"
+                            ],
+                            "args": [
+                                "cat > /tmp/stress.hip << 'HIPEOF'\n#include <hip/hip_runtime.h>\n__global__ void burn(float *buf, int n) {\n    int i = blockIdx.x * blockDim.x + threadIdx.x;\n    float v = (float)i;\n    for (int j = 0; j < n; ++j) v = v * v + 1.0f;\n    if (i < 1) buf[0] = v;\n}\nint main() {\n    float *d; hipMalloc(&d, sizeof(float));\n    while (true) { burn<<<2048, 256>>>(d, 500000); hipDeviceSynchronize(); }\n}\nHIPEOF\nhipcc -o /tmp/stress /tmp/stress.hip && /tmp/stress"
+                            ],
+                            "resources": {
+                                "limits": {
+                                    "amd.com/gpu": 0
+                                }
+                            }
+                        }
+                    ],
+                    "nodeSelector": {
+                        "kubernetes.io/hostname": "node"
+                    }
+                }
+            }
+        },
+        {
+            "workload-type" : "rocm-pytorch-gemm-stress",
+            "pre-pull" : true,
+            "spec" : {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "metadata": {
+                    "name": "rocm-pytorch-gemm-stress-pod",
+                    "namespace": "default",
+                    "labels": {
+                        "purpose": "gpu-stress"
+                    }
+                },
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "pytorch-gemm-stress-container",
+                            "image": "docker.io/rocm/pytorch:rocm10.0_ubuntu24.04_py3.13_pytorch_release_2.13.0",
+                            "imagePullPolicy": "IfNotPresent",
+                            "workingDir": "/root",
+                            "command": ["python3", "-c"],
+                            "args": [
+                                "import torch, time\ndevice = 'cuda:0'\nprint(f'Starting GEMM stress on {device}', flush=True)\nsize = 4096\na = torch.randn((size, size), device=device)\nb = torch.randn((size, size), device=device)\ntorch.cuda.synchronize()\niteration = 0\nwhile True:\n    c = torch.mm(a, b)\n    c = torch.sin(c)\n    torch.cuda.synchronize()\n    iteration += 1\n    if iteration % 10 == 0:\n        print(f'iteration {iteration}', flush=True)"
+                            ],
+                            "resources": {
+                                "limits": {
+                                    "amd.com/gpu": 1
+                                }
+                            }
+                        }
+                    ],
+                    "nodeSelector": {
+                        "kubernetes.io/hostname": "node"
+                    }
+                }
+            }
+        },
+        {
+            "workload-type" : "resnet-tf-gpu",
+            "pre-pull" : false,
+            "spec" : {
+                "apiVersion": "v1",
+                "kind": "Pod",
+                "metadata": {
+                    "name": "resnet-tf-gpu-pod",
+                    "namespace": "default",
+                    "labels": {
+                        "purpose": "demo-alexnet"
+                    }
+                },
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "resnet-tf-gpu-container",
+                            "image": "docker.io/rocm/tensorflow:latest",
+                            "imagePullPolicy": "IfNotPresent",
+                            "workingDir": "/root",
+                            "command": [
+                                "/bin/bash",
+                                "-c",
+                                "--"
+                            ],
+                            "args": [
+                                "sed -i '/from models.experimental import deepspeech/d' /benchmarks/scripts/tf_cnn_benchmarks/models/model_config.py;",
+                                "while :; do",
+                                "   python3 /benchmarks/scripts/tf_cnn_benchmarks/tf_cnn_benchmarks.py --model=resnet;",
+                                "   sleep 5;",
+                                "done"
+                            ],
+                            "resources": {
+                                "limits": {
+                                    "amd.com/gpu": 0
+                                }
+                            }
+                        }
+                    ],
+                    "nodeSelector": {
+                        "kubernetes.io/hostname": "node"
+                    }
+                }
+            }
+        }
+    ]
+}

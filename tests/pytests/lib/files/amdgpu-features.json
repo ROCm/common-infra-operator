@@ -1,0 +1,685 @@
+{
+  "amd-gpu-devs": [
+    {
+      "device-id": [
+        "0x7408"
+      ],
+      "series": "MI250X",
+      "architecture": "CDNA2",
+      "gfx": "gfx90a",
+      "gfxversion": "gfx90a",
+      "features": {
+        "gpu_partitioning": false,
+        "xgmi": true,
+        "ecc": true,
+        "test_runner": {
+          "rvs": true,
+          "agfhc": false,
+          "rvs_recipes": [
+            "babel",
+            "gpup_single",
+            "gst_single",
+            "iet_single",
+            "pbqt_single",
+            "pebb_single",
+            "tst_single"
+          ]
+        }
+      }
+    },
+    {
+      "device-id": [
+        "0x740f"
+      ],
+      "series": "MI210",
+      "architecture": "CDNA2",
+      "gfx": "gfx90a",
+      "features": {
+        "gpu_partitioning": false,
+        "xgmi": false,
+        "ecc": true,
+        "test_runner": {
+          "rvs": true,
+          "agfhc": false,
+          "rvs_recipes": [
+            "babel",
+            "gpup_single",
+            "gst_single",
+            "iet_single",
+            "pbqt_single",
+            "pebb_single",
+            "tst_single"
+          ]
+        },
+        "sriov": {
+          "supported": true,
+          "vm_passthrough": {
+            "host_os": [
+              "Ubuntu 22.04"
+            ],
+            "host_kernel_prefix": [
+              "5.14"
+            ],
+            "guest_os": [
+              "Ubuntu 22.04"
+            ]
+          }
+        }
+      },
+      "gfxversion": "gfx90a"
+    },
+    {
+      "device-id": [
+        "0x7410"
+      ],
+      "series": "MI210-VF",
+      "architecture": "CDNA2",
+      "gfx": "gfx90a",
+      "features": {
+        "gpu_partitioning": false,
+        "xgmi": false,
+        "ecc": true,
+        "test_runner": {
+          "rvs": false,
+          "agfhc": false
+        }
+      },
+      "gfxversion": "gfx90a"
+    },
+    {
+      "device-id": [
+        "0x740c"
+      ],
+      "series": "MI250",
+      "architecture": "CDNA2",
+      "gfx": "gfx90a",
+      "features": {
+        "gpu_partitioning": false,
+        "xgmi": true,
+        "ecc": true,
+        "test_runner": {
+          "rvs": true,
+          "agfhc": false,
+          "rvs_recipes": [
+            "babel",
+            "gpup_single",
+            "gst_single",
+            "iet_single",
+            "pbqt_single",
+            "pebb_single",
+            "tst_single"
+          ]
+        }
+      },
+      "gfxversion": "gfx90a"
+    },
+    {
+      "device-id": [
+        "0x74a1"
+      ],
+      "series": "MI300X",
+      "architecture": "CDNA3",
+      "gfx": "gfx942",
+      "features": {
+        "gpu_partitioning": true,
+        "xgmi": true,
+        "ecc": true,
+        "partition_profiles": [
+          "SPX",
+          "DPX",
+          "QPX",
+          "CPX"
+        ],
+        "nps_modes": [
+          "NPS1",
+          "NPS4"
+        ],
+        "test_runner": {
+          "rvs": true,
+          "agfhc": true,
+          "rvs_recipes": [
+            "babel",
+            "gst_single",
+            "iet_single",
+            "pbqt_single",
+            "pebb_single",
+            "gst_ext",
+            "gst_selfcheck",
+            "gst_stress",
+            "iet_stress"
+          ],
+          "agfhc_recipes": [
+            "gfx_lvl1",
+            "hbm_lvl1",
+            "dma_lvl1",
+            "xgmi_lvl1",
+            "all_lvl1",
+            "all_lvl2"
+          ]
+        },
+        "sriov": {
+          "supported": true,
+          "vm_passthrough": {
+            "host_os": [
+              "Ubuntu 22.04",
+              "Ubuntu 24.04"
+            ],
+            "host_kernel_prefix": [
+              "5.14",
+              "6.8",
+              "6.14"
+            ],
+            "guest_os": [
+              "Ubuntu 22.04",
+              "Ubuntu 24.04"
+            ]
+          }
+        }
+      },
+      "gfxversion": "gfx94x"
+    },
+    {
+      "device-id": [
+        "0x74b5"
+      ],
+      "series": "MI300X-VF",
+      "architecture": "CDNA3",
+      "gfx": "gfx942",
+      "features": {
+        "gpu_partitioning": false,
+        "xgmi": false,
+        "ecc": true,
+        "test_runner": {
+          "rvs": false,
+          "agfhc": false
+        }
+      },
+      "gfxversion": "gfx94x"
+    },
+    {
+      "device-id": [
+        "0x74a2",
+        "0x74a8"
+      ],
+      "series": "MI308X",
+      "architecture": "CDNA3",
+      "gfx": "gfx942",
+      "features": {
+        "gpu_partitioning": true,
+        "xgmi": true,
+        "ecc": true,
+        "partition_profiles": [
+          "SPX",
+          "DPX",
+          "QPX",
+          "CPX"
+        ],
+        "nps_modes": [
+          "NPS1",
+          "NPS4"
+        ],
+        "test_runner": {
+          "rvs": true,
+          "agfhc": true,
+          "rvs_recipes": [
+            "babel",
+            "gst_single",
+            "iet_single",
+            "iet_stress",
+            "gst_thermal",
+            "iet_thermal"
+          ],
+          "agfhc_recipes": [
+            "gfx_lvl1",
+            "hbm_lvl1",
+            "dma_lvl1",
+            "xgmi_lvl1",
+            "all_lvl1",
+            "all_lvl2"
+          ]
+        }
+      },
+      "gfxversion": "gfx94x"
+    },
+    {
+      "device-id": [
+        "0x74b5",
+        "0x74b6",
+        "0x74bc"
+      ],
+      "series": "MI308X-VF",
+      "architecture": "CDNA3",
+      "gfx": "gfx942",
+      "features": {
+        "gpu_partitioning": false,
+        "xgmi": false,
+        "ecc": true,
+        "test_runner": {
+          "rvs": false,
+          "agfhc": false
+        }
+      },
+      "gfxversion": "gfx94x"
+    },
+    {
+      "device-id": [
+        "0x75a0"
+      ],
+      "series": "MI350X",
+      "architecture": "CDNA4",
+      "gfx": "gfx950",
+      "features": {
+        "gpu_partitioning": true,
+        "xgmi": true,
+        "ecc": true,
+        "partition_profiles": [
+          "SPX",
+          "DPX",
+          "QPX",
+          "CPX"
+        ],
+        "nps_modes": [
+          "NPS1",
+          "NPS2",
+          "NPS4"
+        ],
+        "test_runner": {
+          "rvs": true,
+          "agfhc": true,
+          "rvs_recipes": [
+            "babel",
+            "gst_single",
+            "pbqt_single",
+            "pebb_single",
+            "iet_stress"
+          ],
+          "agfhc_recipes": [
+            "gfx_lvl1",
+            "hbm_lvl1",
+            "dma_lvl1",
+            "xgmi_lvl1",
+            "all_lvl1",
+            "all_lvl2"
+          ]
+        },
+        "sriov": {
+          "supported": true,
+          "vm_passthrough": {
+            "host_os": [
+              "Ubuntu 24.04"
+            ],
+            "host_kernel_prefix": [
+              "6.8",
+              "6.14"
+            ],
+            "guest_os": [
+              "Ubuntu 24.04"
+            ]
+          }
+        }
+      },
+      "gfxversion": "gfx950"
+    },
+    {
+      "device-id": [
+        "0x75a5",
+        "0x74a5"
+      ],
+      "series": "MI325X",
+      "architecture": "CDNA3",
+      "gfx": "gfx942",
+      "features": {
+        "gpu_partitioning": true,
+        "xgmi": true,
+        "ecc": true,
+        "partition_profiles": [
+          "SPX",
+          "DPX",
+          "QPX",
+          "CPX"
+        ],
+        "nps_modes": [
+          "NPS1",
+          "NPS2",
+          "NPS4"
+        ],
+        "test_runner": {
+          "rvs": true,
+          "agfhc": true,
+          "rvs_recipes": [
+            "babel",
+            "gst_single",
+            "pbqt_single",
+            "pebb_single",
+            "iet_stress"
+          ],
+          "agfhc_recipes": [
+            "gfx_lvl1",
+            "hbm_lvl1",
+            "dma_lvl1",
+            "xgmi_lvl1",
+            "all_lvl1",
+            "all_lvl2"
+          ]
+        },
+        "sriov": {
+          "supported": true,
+          "vm_passthrough": {
+            "host_os": [
+              "Ubuntu 22.04"
+            ],
+            "host_kernel_prefix": [
+              "6.8"
+            ],
+            "guest_os": [
+              "Ubuntu 22.04"
+            ]
+          }
+        }
+      },
+      "gfxversion": "gfx94x"
+    },
+    {
+      "device-id": [
+        "0x75b0"
+      ],
+      "series": "MI350X-VF",
+      "architecture": "CDNA4",
+      "gfx": "gfx950",
+      "features": {
+        "gpu_partitioning": false,
+        "xgmi": false,
+        "ecc": true,
+        "test_runner": {
+          "rvs": false,
+          "agfhc": false
+        }
+      },
+      "gfxversion": "gfx950"
+    },
+    {
+      "device-id": [
+        "0x74b9"
+      ],
+      "series": "MI325X-VF",
+      "architecture": "CDNA3",
+      "gfx": "gfx942",
+      "features": {
+        "gpu_partitioning": false,
+        "xgmi": false,
+        "ecc": true,
+        "test_runner": {
+          "rvs": false,
+          "agfhc": false
+        }
+      },
+      "gfxversion": "gfx94x"
+    },
+    {
+      "device-id": [
+        "0x75a8"
+      ],
+      "series": "MI350P",
+      "architecture": "CDNA4",
+      "gfx": "gfx950",
+      "features": {
+        "profiler_metrics": true,
+        "gpu_partitioning": true,
+        "xgmi": true,
+        "ecc": true,
+        "partition_profiles": [
+          "SPX",
+          "DPX",
+          "CPX"
+        ],
+        "nps_modes": [
+          "NPS1"
+        ],
+        "driver": {
+          "inbox": {
+            "min_version": "31.30",
+            "max_version": null
+          },
+          "deviceconfig": {
+            "min_version": "31.30",
+            "max_version": null
+          }
+        },
+        "test_runner": {
+          "rvs": true,
+          "agfhc": true,
+          "rvs_recipes": [
+            "babel_single",
+            "gst_single",
+            "iet_stress"
+          ],
+          "agfhc_recipes": [
+            "gfx_lvl1",
+            "hbm_lvl1",
+            "dma_lvl1",
+            "all_lvl1",
+            "all_lvl2"
+          ]
+        }
+      },
+      "gfxversion": "gfx950"
+    },
+    {
+      "device-id": [
+        "0x75a3"
+      ],
+      "series": "MI355X",
+      "architecture": "CDNA4",
+      "gfx": "gfx950",
+      "features": {
+        "gpu_partitioning": true,
+        "xgmi": true,
+        "ecc": true,
+        "partition_profiles": [
+          "SPX",
+          "DPX",
+          "QPX",
+          "CPX"
+        ],
+        "nps_modes": [
+          "NPS1",
+          "NPS2",
+          "NPS4"
+        ],
+        "test_runner": {
+          "rvs": true,
+          "agfhc": true,
+          "rvs_recipes": [
+            "babel",
+            "gst_single",
+            "pbqt_single",
+            "pebb_single",
+            "iet_stress"
+          ],
+          "agfhc_recipes": [
+            "gfx_lvl1",
+            "hbm_lvl1",
+            "dma_lvl1",
+            "xgmi_lvl1",
+            "all_lvl1",
+            "all_lvl2"
+          ]
+        },
+        "sriov": {
+          "supported": true,
+          "vm_passthrough": {
+            "host_os": [
+              "Ubuntu 24.04"
+            ],
+            "host_kernel_prefix": [
+              "6.14"
+            ],
+            "guest_os": [
+              "Ubuntu 24.04"
+            ]
+          }
+        }
+      },
+      "gfxversion": "gfx950"
+    },
+    {
+      "device-id": [
+        "0x75b3"
+      ],
+      "series": "MI355X-VF",
+      "architecture": "CDNA4",
+      "gfx": "gfx950",
+      "features": {
+        "gpu_partitioning": false,
+        "xgmi": false,
+        "ecc": true,
+        "test_runner": {
+          "rvs": false,
+          "agfhc": false
+        }
+      },
+      "gfxversion": "gfx950"
+    },
+    {
+      "device-id": [
+        "0x7551"
+      ],
+      "series": "R9700S",
+      "architecture": "RDNA4",
+      "gfx": "gfx1201",
+      "features": {
+        "gpu_family": "GC_12_0_0",
+        "profiler_metrics": true,
+        "gpu_partitioning": false,
+        "xgmi": true,
+        "ecc": true,
+        "driver": {
+          "inbox": {
+            "min_version": "31.30",
+            "max_version": null
+          },
+          "deviceconfig": {
+            "min_version": "31.30",
+            "max_version": null
+          }
+        },
+        "test_runner": {
+          "rvs": true,
+          "agfhc": false,
+          "rvs_recipes": [
+            "gst_single",
+            "iet_single"
+          ]
+        },
+        "anr": {
+          "reboot-overhead-seconds": 900
+        }
+      },
+      "gfxversion": "gfx120x"
+    },
+    {
+      "device-id": [
+        "0x744a"
+      ],
+      "series": "W7900",
+      "architecture": "RDNA3",
+      "gfx": "gfx1100",
+      "features": {
+        "gpu_family": "GC_11_0_0",
+        "profiler_metrics": true,
+        "gpu_partitioning": false,
+        "xgmi": true,
+        "ecc": true,
+        "driver": {
+          "inbox": {
+            "min_version": "31.30",
+            "max_version": null
+          },
+          "deviceconfig": {
+            "min_version": "31.30",
+            "max_version": null
+          }
+        },
+        "test_runner": {
+          "rvs": true,
+          "agfhc": false,
+          "rvs_recipes": [
+            "mem",
+            "gpup_single",
+            "gst_single",
+            "iet_single",
+            "rcqt_single",
+            "pbqt_single",
+            "pebb_single",
+            "peqt_single",
+            "pesm_1"
+          ]
+        },
+        "anr": {
+          "reboot-overhead-seconds": 1200
+        }
+      },
+      "gfxversion": "gfx110x"
+    }
+  ],
+  "recipe-timeouts": {
+    "RVS": {
+      "babel": 600,
+      "gst_single": 1200,
+      "gst_ext": 1200,
+      "gst_selfcheck": 600,
+      "gst_stress": 3600,
+      "gst_stress_3_hrs": 10800,
+      "gst_thermal": 1200,
+      "iet_single": 600,
+      "iet_stress": 1200,
+      "iet_thermal": 1200,
+      "mem": 1200,
+      "gpup_single": 1200,
+      "pebb_single": 1200,
+      "pbqt_single": 1200,
+      "peqt_single": 1200,
+      "pesm_1": 1200,
+      "rcqt_single": 1200,
+      "tst_single": 1200
+    },
+    "AGFHC": {
+      "gfx_lvl1": 300,
+      "gfx_lvl2": 600,
+      "gfx_lvl3": 1800,
+      "gfx_lvl4": 3600,
+      "hbm_lvl1": 300,
+      "hbm_lvl2": 600,
+      "hbm_lvl3": 1800,
+      "hbm_lvl4": 3600,
+      "hbm_lvl5": 7200,
+      "dma_lvl1": 300,
+      "dma_lvl2": 600,
+      "dma_lvl3": 1800,
+      "dma_lvl4": 3600,
+      "xgmi_lvl1": 300,
+      "xgmi_lvl2": 600,
+      "xgmi_lvl3": 1800,
+      "xgmi_lvl4": 3600,
+      "pcie_lvl1": 300,
+      "pcie_lvl2": 600,
+      "pcie_lvl3": 1800,
+      "pcie_lvl4": 3600,
+      "all_lvl1": 300,
+      "all_lvl2": 600,
+      "all_lvl3": 1800,
+      "all_lvl4": 3600,
+      "all_lvl5": 7200,
+      "all_perf": 3600,
+      "all_burnin_4h": 14400,
+      "all_burnin_12h": 43200,
+      "all_burnin_24h": 86400,
+      "hbm_burnin_8h": 28800,
+      "hbm_burnin_24h": 86400,
+      "single_pass": 3600,
+      "rochpl_isolation": 3600,
+      "thermal": 3600,
+      "hsio": 3600
+    }
+  }
+}

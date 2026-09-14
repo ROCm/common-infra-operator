@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-run
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: test-run-cluster-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: test-run-rb
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: test-run-cluster-role
+subjects:
+- kind: ServiceAccount
+  name: test-run
+  namespace: default
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: amd-test-runner
+  namespace: default
+spec:
+  template:
+    spec:
+      serviceAccountName: test-run
+      nodeSelector:
+        kubernetes.io/hostname: node1 # requesting to run test on node1
+      volumes: # mount driver related directory and device interface
+      - name: kfd
+        hostPath:
+          path: /dev/kfd
+          type: CharDevice
+      - name: dri
+        hostPath:
+          path: /dev/dri
+          type: Directory
+      containers:
+      - name: amd-test-runner
+        image: image_name
+        imagePullPolicy: IfNotPresent
+        securityContext: # setup security context for container to get access to device related interfaces
+          privileged: true
+        volumeMounts:
+        - mountPath: /dev/dri
+          name: dri
+        - mountPath: /dev/kfd
+          name: kfd
+        env:
+        - name: TEST_TRIGGER
+          value: "MANUAL" # Set the TEST_TRIGGER environment variable to MANUAL for manual test
+        - name: POD_NAME # Use downward API to pass pod name to test runner container
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE # Use downward API to pass pod namespace to test runner container
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_UID # Use downward API to pass pod UID to test runner container
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
+        - name: NODE_NAME # Use downward API to pass host name to test runner container
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+      restartPolicy: Never
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 120 # TTL for the job to be auto cleaned
