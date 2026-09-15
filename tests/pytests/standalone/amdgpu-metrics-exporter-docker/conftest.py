@@ -28,6 +28,7 @@ import pdb
 import pytest
 import os
 import logging
+import shlex
 import time
 import requests
 from lib import common
@@ -92,7 +93,10 @@ def run_exporter_docker_container(gpu_cluster, images, environment):
                             "Unable to upload reference config.json")
 
             if registry_credentials:
-                ret_code, ret_stdout, reg_stderr = node.run_command(f"docker login -u {registry_credentials[0]} -p {registry_credentials[1]}")
+                ret_code, ret_stdout, reg_stderr = node.run_command(
+                    f"printf '%s' {shlex.quote(registry_credentials[1])} | "
+                    f"docker login -u {shlex.quote(registry_credentials[0])} --password-stdin"
+                )
                 Logger.debug(f"Result of docker login - retcode: {ret_code}")
 
             cmd = f"docker run -d --device=/dev/dri --device=/dev/kfd -p 5000:5000 -v /tmp/etc/metrics:/etc/metrics --name device-metrics-exporter {img}"

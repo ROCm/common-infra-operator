@@ -229,7 +229,7 @@ def vf_topology(hypervisor_node, gim_node, hypervisor_images, partition_profile,
                 gpu_series=gpu_series, logdir=logdir,
             )
     except Exception as e:
-        pytest.skip(f"VM launch failed — cannot run VF metrics tests: {e}")
+        pytest.fail(f"VM launch failed — cannot run VF metrics tests: {e}")
 
     Logger.info(f"VF topology ready: {topology}")
     yield topology

@@ -63,7 +63,7 @@ def deploy_exporter_helmchart(request, gpu_cluster, images, environment):
         node_name = node.host_name
         cmd = ["ls", "-1", "/var/lib/amd-metrics-exporter/amdgpuhealth"]
         ret_code, resp_stdout = k8_util.run_command_on_node(gpu_cluster, node_name, cmd)
-        if ret_code != 0:
+        if ret_code == 0:
             Logger.debug(f"Found /var/lib/amd-metrics-exporter/amdgpuhealth lingering from previous installations: {resp_stdout}")
             cmd = ["sudo", "rm", "-r", "-f", "/var/lib/amd-metrics-exporter"]
             ret_code, resp_stdout = k8_util.run_command_on_node(gpu_cluster, node_name, cmd)

@@ -26,7 +26,7 @@ if [ "$#" -gt 2 ]; then
 	exit 2
 fi
 
-VENV=$1
+VENV=${1:-${PKG_DIR}/venv}
 
 if [ ! -d "${VENV}" ];
 then

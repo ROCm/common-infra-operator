@@ -41,7 +41,7 @@ from urllib.parse import urlparse
 # olm-subscription (which uses catalog/channel/package instead).
 _REQUIRED_KEYS = {
     "olm-subscription": [],
-    "qcow2":            ["location"],
+    "qcow2":            ["location", "version"],
     "helm-chart":       ["location", "version"],
     "olm-bundle":       ["location", "version"],
     "debian":           ["location", "version"],

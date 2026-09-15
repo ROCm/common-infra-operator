@@ -46,7 +46,7 @@ metadata:
   namespace: default
 spec:
   # check specific schedule config at https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#writing-a-cronjob-spec
-  schedule: "MINUTE * * * *" # This schedule runs the job daily at midnight
+  schedule: "0 0 * * *" # This schedule runs the job daily at midnight
   jobTemplate:
     spec:
       template:

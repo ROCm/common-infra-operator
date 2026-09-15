@@ -17,8 +17,8 @@
 import sys
 import os
 
-# Allow importing test_config_manager from the parent gpu-operator directory
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Allow importing test_config_manager from the sibling gpu-operator directory
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "gpu-operator"))
 
 import time
 import logging
