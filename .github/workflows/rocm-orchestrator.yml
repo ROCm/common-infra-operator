@@ -8,7 +8,7 @@ name: ROCm Orchestrator
 # artifacts are needed per test target.
 #
 # Component names must match the build_repo keys in gpu-operator.yml:
-#   exporter, config-manager, dra, gpu-operator, kmm
+#   exporter, config-manager, dra, gpu-operator
 #
 # ci-internal/ and tests/pytests/ must exist in this repo.
 # Callers must set permissions: contents: read, id-token: write, actions: write
@@ -19,7 +19,7 @@ on:
       component:
         required: true
         type: string
-        description: 'Component that was just built (must match build_repo key in gpu-operator.yml: exporter, config-manager, dra, gpu-operator, kmm)'
+        description: 'Component that was just built (must match build_repo key in gpu-operator.yml: exporter, config-manager, dra, gpu-operator)'
       s3_prefix:
         required: true
         type: string
@@ -45,7 +45,6 @@ on:
           - config-manager
           - dra
           - gpu-operator
-          - kmm
         default: exporter
         description: 'Component to validate (must match build_repo key in gpu-operator.yml)'
       s3_prefix:
@@ -151,12 +150,13 @@ jobs:
               ],
               "dra": [
                   {"name": "dra-driver", "app": "gpu-operator-dra-driver", "deployment": "k8"},
+                  {"name": "gpu-operator-dra", "app": "gpu-operator", "deployment": "k8"},
               ],
               "gpu-operator": [
                   {"name": "gpu-operator-k8", "app": "gpu-operator", "deployment": "k8"},
-              ],
-              "kmm": [
-                  {"name": "gpu-operator-kmm", "app": "gpu-operator", "deployment": "k8"},
+                  {"name": "gpu-operator-scale", "app": "gpu-operator-scale", "deployment": "k8"},
+                  {"name": "gpu-operator-upgrade", "app": "gpu-operator-upgrade", "deployment": "k8"},
+                  {"name": "gpu-operator-amdgpu-driver", "app": "gpu-operator-amdgpu-driver", "deployment": "k8"},
               ],
           })
 
