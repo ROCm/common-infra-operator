@@ -10,7 +10,7 @@ The pre-built QCOW2 image contains:
   - amdgpu DKMS pre-built for the HWE kernel
   - ROCm SMI tools (rocm-smi-lib / rocm-smi4)
   - Docker CE — workload runs in a ROCm container (no native torch install)
-  - root password: docker, SSH password auth enabled
+  - root password: set via VM_ROOT_PASSWORD env var, SSH password auth enabled
   - netplan configured for QEMU SLIRP NAT (en* DHCP)
   - cloud-init disabled (datasource_list: [None]) to avoid boot delays
 
@@ -49,7 +49,7 @@ _VM_SSH_TIMEOUT = 300   # seconds to wait for guest SSH to become reachable
 _VM_MEMORY_MB   = 8192
 _VM_CPUS        = 8
 _VM_USER        = "root"
-_VM_PASSWORD    = "docker"
+_VM_PASSWORD    = os.environ.get("VM_ROOT_PASSWORD", "")
 
 _VM_LOG_LINES_TO_PRINT = 100   # lines of QEMU/serial log printed to pytest output on failure
 
@@ -217,7 +217,7 @@ def launch_vm(node, qcow2_path: str, vf_pci_addr: str,
     Launch a QEMU VM with the given VF passed through via VFIO.
 
     SSH is forwarded from host port *ssh_port* to guest port 22.
-    Credentials: root / docker (pre-configured in the QCOW2 image).
+    Credentials: root / VM_ROOT_PASSWORD env var (pre-configured in the QCOW2 image).
 
     seed_iso_path: optional cloud-init NoCloud seed ISO to attach as a
     second virtio drive.
@@ -323,6 +323,8 @@ def wait_for_vm_ssh(node, session: "VMSession",
     On timeout, collects QEMU stderr, serial console, and hypervisor dmesg
     into *logdir* before failing.
     """
+    if not _VM_PASSWORD:
+        raise ValueError("VM_ROOT_PASSWORD environment variable must be set")
     ssh_port  = session.ssh_port
     deadline  = time.time() + timeout
     ssh_probe = (

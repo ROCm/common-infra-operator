@@ -1,2 +1,46 @@
+# Python
 __pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
 venv
+
+# Secrets and credentials
+secrets.json
+*.kubeconfig
+env.json
+
+# Certificates and keys
+*.pem
+*.key
+*.crt
+*.cert
+
+# Logs and reports
+logs/
+reports/
+*.log
+*.html
+
+# VM images
+*.qcow2
+*.img
+*.vmdk
+
+# Downloads and artifacts
+downloads/*.tgz
+downloads/*.tar.gz
+downloads/*.deb
+
+# Tech support bundles
+techsupport*
+*.tgz
+
+# Environment files
+.env
+*.env
+
+# IDE
+.vscode/
+.idea/
+*.swp

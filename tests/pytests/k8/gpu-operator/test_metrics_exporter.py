@@ -306,7 +306,7 @@ def test_exporter_nodeport_rbac_support(gpu_cluster, deviceconfig_install, envir
     # Create token for ServiceAccount
     token = k8_util.k8_create_token(metrics_reader_ns, sa_name, "1h")
     K8Helper.triage(environment, (token != None), f"Failed to create token for the service-account : {sa_name}")
-    Logger.info(f"TOKEN={token}")
+    Logger.info(f"TOKEN=<{len(token)} chars>")
 
     time.sleep(30) # Wait for exporter to start working
     # Get endpoint for each node
@@ -441,7 +441,7 @@ def test_exporter_nodeport_rbac_http(gpu_cluster, deviceconfig_install, environm
     # Create token for ServiceAccount
     token = k8_util.k8_create_token(metrics_reader_ns, sa_name, "1h")
     K8Helper.triage(environment, (token != None), f"Failed to create token for the service-account : {sa_name}")
-    Logger.info(f"TOKEN={token}")
+    Logger.info(f"TOKEN=<{len(token)} chars>")
 
     time.sleep(30) # Wait for exporter to start working
     # Get endpoint for each node
@@ -863,7 +863,7 @@ def test_exporter_servicetype_default_rbac_support(gpu_cluster, deviceconfig_ins
     # Create token for ServiceAccount
     token = k8_util.k8_create_token(metrics_reader_ns, sa_name, "1h")
     K8Helper.triage(environment, (token != None), f"Failed to create token for the service-account : {sa_name}")
-    Logger.info(f"TOKEN={token}")
+    Logger.info(f"TOKEN=<{len(token)} chars>")
 
     time.sleep(30) # Wait for exporter to start working
     # Get endpoint for each node
@@ -977,7 +977,7 @@ def test_exporter_servicetype_default_rbac_http(gpu_cluster, deviceconfig_instal
     # Create token for ServiceAccount
     token = k8_util.k8_create_token(metrics_reader_ns, sa_name, "1h")
     K8Helper.triage(environment, (token != None), f"Failed to create token for the service-account : {sa_name}")
-    Logger.info(f"TOKEN={token}")
+    Logger.info(f"TOKEN=<{len(token)} chars>")
 
     time.sleep(30) # Wait for exporter to start working
     # Get endpoint for each node
@@ -1094,7 +1094,7 @@ def test_exporter_clusterip_rbac_internal_port(gpu_cluster, deviceconfig_install
     # Create token for ServiceAccount
     token = k8_util.k8_create_token(metrics_reader_ns, sa_name, "1h")
     K8Helper.triage(environment, (token != None), f"Failed to create token for the service-account : {sa_name}")
-    Logger.info(f"TOKEN={token}")
+    Logger.info(f"TOKEN=<{len(token)} chars>")
 
     time.sleep(30) # Wait for exporter to start working
     # Get endpoint for each node
@@ -1208,7 +1208,7 @@ def test_exporter_clusterip_rbac_http_default_port(gpu_cluster, deviceconfig_ins
     # Create token for ServiceAccount
     token = k8_util.k8_create_token(metrics_reader_ns, sa_name, "1h")
     K8Helper.triage(environment, (token != None), f"Failed to create token for the service-account : {sa_name}")
-    Logger.info(f"TOKEN={token}")
+    Logger.info(f"TOKEN=<{len(token)} chars>")
 
     time.sleep(30) # Wait for exporter to start working
     # Get endpoint for each node

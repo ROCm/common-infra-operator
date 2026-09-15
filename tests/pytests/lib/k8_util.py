@@ -17,11 +17,13 @@
 '''
 
 import ast
+import inspect
 import os
 import pdb
 import time
 import json
 import logging
+import re
 import pytest
 import base64
 import pprint
@@ -38,11 +40,40 @@ import lib.common as common
 Logger = logging.getLogger("lib.k8util")
 LogPrettyPrinter = pprint.PrettyPrinter(indent = 2)
 
+_SENSITIVE_PARAM_RE = re.compile(
+    r'(^|_)(password|passwd|pwd|token|bearer|secret|credential|auth)$',
+    re.IGNORECASE,
+)
+_SENSITIVE_KEY_RE = re.compile(
+    r'^(key|(api|ssh|private|secret|access|auth|encryption|signing|service_account)_key)$',
+    re.IGNORECASE,
+)
+_REDACTED = '***REDACTED***'
+
+
+def _is_sensitive(name):
+    return bool(_SENSITIVE_PARAM_RE.search(name)) or bool(_SENSITIVE_KEY_RE.match(name))
+
+
 def log_arguments(func):
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        Logger.debug(f"Function::'{func.__name__}' with args: {args} kwargs: {kwargs}")
+        try:
+            sig = inspect.signature(func)
+            param_names = list(sig.parameters.keys())
+        except (ValueError, TypeError):
+            param_names = []
+
+        safe_args = tuple(
+            _REDACTED if i < len(param_names) and _is_sensitive(param_names[i]) else v
+            for i, v in enumerate(args)
+        )
+        safe_kwargs = {
+            k: _REDACTED if _is_sensitive(k) else v
+            for k, v in kwargs.items()
+        }
+        Logger.debug(f"Function::'{func.__name__}' with args: {safe_args} kwargs: {safe_kwargs}")
         return func(*args, **kwargs)
     return wrapper
 
@@ -2347,7 +2378,8 @@ def k8_create_token(namespace : str, sa_name : str, duration : str) -> (int, str
         api_response = api.create_namespaced_service_account_token(name = sa_name, 
                                                                    namespace = namespace,
                                                                    body = token_request)
-        Logger.debug(f"Created token: {api_response}")
+        Logger.debug(f"Created token for SA={sa_name} namespace={namespace} "
+                         f"expiration_seconds={duration_in_seconds}")
         return api_response.status.token
     except ApiException as e:
         Logger.error(f"Failed to create token for sa-account : {sa_name}, error: {e}")
