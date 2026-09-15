@@ -25,19 +25,11 @@ import pytest
 import subprocess
 import pprint
 import time
-from functools import wraps
 import lib.common as common
+from lib.k8_util import log_arguments
 
 Logger = logging.getLogger("lib.helmutil")
 LogPrettyPrinter = pprint.PrettyPrinter(indent = 2)
-
-def log_arguments(func):
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        Logger.debug(f"Function::'{func.__name__}' with args: {args} kwargs: {kwargs}")
-        return func(*args, **kwargs)
-    return wrapper
 
 @log_arguments
 def helm_list(k8_cluster : common.k8_cluster, namespace : str) -> (int, str, str):

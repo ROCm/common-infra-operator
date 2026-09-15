@@ -24,20 +24,12 @@ import subprocess
 import pprint
 import base64
 import time
-from functools import wraps
 import lib.common as common
 import lib.k8_util as k8_util
+from lib.k8_util import log_arguments
 
 Logger = logging.getLogger("lib.olmutil")
 LogPrettyPrinter = pprint.PrettyPrinter(indent = 2)
-
-def log_arguments(func):
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        Logger.debug(f"Function::'{func.__name__}' with args: {args} kwargs: {kwargs}")
-        return func(*args, **kwargs)
-    return wrapper
 
 @log_arguments
 def olm_install(k8_cluster : common.k8_cluster, repo_url : str, namespace: str, **kwargs) -> (int, str, str):
