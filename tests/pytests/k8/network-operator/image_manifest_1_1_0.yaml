@@ -1,0 +1,30 @@
+# Image manifest for AMD Network Operator v1.1.0
+version: "v1.1.0"
+
+images:
+  operator:
+    repository: docker.io/rocm/network-operator
+    tag: v1.1.0
+  devicePlugin:
+    repository: docker.io/rocm/k8s-network-device-plugin
+    tag: v1.1.0
+  nodeLabeller:
+    repository: docker.io/rocm/k8s-network-node-labeller
+    tag: v1.1.0
+  metricsExporter:
+    repository: docker.io/rocm/device-metrics-exporter
+    tag: nic-v1.1.0
+  cniPlugins:
+    repository: docker.io/rocm/k8s-cni-plugins
+    tag: v1.1.0
+  utilsContainer:
+    repository: docker.io/rocm/network-operator-utils
+    tag: v1.1.0
+  initContainer:
+    repository: busybox
+    tag: "1.36"
+
+helm:
+  repository: rocm-network/network-operator-charts
+  chartName: amd-network-operator
+  namespace: kube-amd-network

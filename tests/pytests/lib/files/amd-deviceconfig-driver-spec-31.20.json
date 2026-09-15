@@ -1,0 +1,6 @@
+{
+    "driver-deployment" : "deviceconfig",
+    "default-version" : "31.20",
+    "alternative-versions" : [
+    ]
+}
