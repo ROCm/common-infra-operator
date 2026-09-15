@@ -1,7 +1,17 @@
 name: ROCm Orchestrator
 
-# Called by DME/DCM build workflows after a successful build + publish.
-# Can also be triggered manually from the Actions tab for standalone testing.
+# Called by component build workflows after a successful build + publish.
+# Downloads required artifacts from S3, generates image manifest using
+# gen_image_manifest.py, and runs validation tests.
+#
+# Reads ci-internal/operators/gpu-operator.yml to determine which component
+# artifacts are needed per test target.
+#
+# Component names must match the build_repo keys in gpu-operator.yml:
+#   exporter, config-manager, dra, gpu-operator, kmm
+#
+# ci-internal/ and tests/pytests/ must exist in this repo.
+# Callers must set permissions: contents: read, id-token: write, actions: write
 
 on:
   workflow_call:
@@ -9,94 +19,397 @@ on:
       component:
         required: true
         type: string
-        description: 'Component name (dme or dcm)'
-      scenario:
-        required: true
-        type: string
-        description: 'Build scenario (nightly, pre-release, pull_request)'
+        description: 'Component that was just built (must match build_repo key in gpu-operator.yml: exporter, config-manager, dra, gpu-operator, kmm)'
       s3_prefix:
         required: true
         type: string
-        description: 'S3 path prefix where build artifacts were uploaded'
+        description: 'S3 path where just-built artifacts are (empty for PR builds)'
+      image_tag:
+        required: true
+        type: string
+        description: 'Image tag used for GHA artifact names (e.g. 10.2.0a20260910, v1.5.2)'
+    secrets:
+      ROCK_CI_S3_SECRET:
+        required: true
     outputs:
       result:
         description: 'Validation result (pass or fail)'
-        value: ${{ jobs.validate.outputs.result }}
+        value: ${{ jobs.report.outputs.result }}
 
   workflow_dispatch:
     inputs:
       component:
         type: choice
         options:
-          - dme
-          - dcm
-        default: dme
-        description: 'Component to validate'
-      scenario:
-        type: choice
-        options:
-          - nightly
-          - pre-release
-        default: nightly
-        description: 'Build scenario'
+          - exporter
+          - config-manager
+          - dra
+          - gpu-operator
+          - kmm
+        default: exporter
+        description: 'Component to validate (must match build_repo key in gpu-operator.yml)'
       s3_prefix:
         type: string
         default: ''
-        description: 'S3 prefix (leave blank for standalone test)'
+        description: 'S3 prefix for just-built component'
+      image_tag:
+        type: string
+        default: ''
+        description: 'Image tag'
 
 permissions:
   contents: read
+  id-token: write
+  actions: write
+
+env:
+  S3_BUCKET: ${{ vars.THEROCK_BUCKET_NAME }}
+  OPERATOR_CONFIG: ci-internal/operators/gpu-operator.yml
 
 jobs:
-  validate:
-    name: Validate ${{ inputs.component }}
+
+  prepare:
+    name: Prepare — ${{ inputs.component }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     outputs:
-      result: ${{ steps.verdict.outputs.result }}
+      download_ok: ${{ steps.download.outputs.download_ok || steps.download-gha.outputs.download_ok }}
+      test_targets: ${{ steps.plan.outputs.test_targets }}
     steps:
       - name: Log context
         run: |
           echo "=== Orchestrator triggered ==="
-          echo "Component  : ${{ inputs.component }}"
-          echo "Scenario   : ${{ inputs.scenario }}"
-          echo "S3 prefix  : ${{ inputs.s3_prefix }}"
-          echo "Repository : ${GITHUB_REPOSITORY}"
-          echo "Event      : ${GITHUB_EVENT_NAME}"
-          echo "Run ID     : ${GITHUB_RUN_ID}"
+          echo "Component : ${{ inputs.component }}"
+          echo "S3 prefix : ${{ inputs.s3_prefix }}"
+          echo "Image tag : ${{ inputs.image_tag }}"
+          echo "S3 bucket : ${S3_BUCKET}"
 
-      - name: Checkout gpu-operator
-        id: checkout
-        continue-on-error: true
-        uses: actions/checkout@v4
-        with:
-          repository: ROCm/gpu-operator
-          path: gpu-operator
-
-      - name: Verdict
-        if: always()
-        id: verdict
+      - name: Validate inputs
         run: |
-          if [ "${{ steps.checkout.outcome }}" = "success" ]; then
-            echo "result=pass" >> "$GITHUB_OUTPUT"
-            echo "gpu-operator: ACCESSIBLE"
-            ls gpu-operator/ || true
-          else
-            echo "result=fail" >> "$GITHUB_OUTPUT"
-            echo "gpu-operator: NOT ACCESSIBLE"
+          if [ -z "${S3_BUCKET}" ]; then
+            echo "::error::THEROCK_BUCKET_NAME variable is not configured on this repository"
+            exit 1
           fi
 
-      - name: Summary
-        if: always() && github.event_name == 'workflow_dispatch'
+      - name: Checkout common-infra-operator
+        uses: actions/checkout@v4
+        with:
+          repository: ROCm/common-infra-operator
+
+      - name: Determine test targets and download plan
+        id: plan
+        env:
+          COMPONENT: ${{ inputs.component }}
+          S3_PREFIX: ${{ inputs.s3_prefix }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
+          set -euo pipefail
+
+          python3 << 'PYEOF'
+          import yaml, json, os, sys
+
+          component = os.environ["COMPONENT"]
+          s3_prefix = os.environ.get("S3_PREFIX", "")
+          image_tag = os.environ.get("IMAGE_TAG", "")
+          config_path = os.environ.get("OPERATOR_CONFIG", "ci-internal/operators/gpu-operator.yml")
+
+          with open(config_path) as f:
+              config = yaml.safe_load(f)
+
+          # --- Read mappings from operator config ---
+
+          build_repos = config.get("build_repos", {})
+          target_components = config.get("target_components", {})
+
+          # Validate component exists in config
+          if component not in build_repos and component != "dra":
+              print(f"::error::Unknown component '{component}'. Must be one of: {', '.join(build_repos.keys())}, dra", file=sys.stderr)
+              sys.exit(1)
+
+          # build_repo key → artifact directory name (derived from assets_path)
+          COMPONENT_TO_DIR = {}
+          for key, info in build_repos.items():
+              ap = info.get("assets_path", "")
+              COMPONENT_TO_DIR[key] = ap.replace("hourly-", "", 1) if ap.startswith("hourly-") else ap
+          COMPONENT_TO_DIR.setdefault("dra", "k8s-gpu-dra-driver")
+
+          # --- Component test targets ---
+          # Defines which test targets to run per component and which deployment
+          # type each target uses. The deployment type determines which component
+          # artifacts are needed (via target_components in gpu-operator.yml).
+          #
+          # TODO: move this to gpu-operator.yml as a component_targets section
+          COMPONENT_TARGETS = config.get("component_targets", {
+              "exporter": [
+                  {"name": "exporter-docker",       "app": "amdgpu-metrics-exporter-docker", "deployment": "standalone"},
+                  {"name": "exporter-debian",       "app": "amdgpu-metrics-exporter-debian", "deployment": "standalone"},
+                  {"name": "exporter-helmchart",    "app": "gpu-operator-exporter",          "deployment": "k8"},
+                  {"name": "gpu-operator-exporter", "app": "gpu-operator",                   "deployment": "k8"},
+              ],
+              "config-manager": [
+                  {"name": "gpu-operator-dcm", "app": "gpu-operator", "deployment": "k8"},
+              ],
+              "dra": [
+                  {"name": "dra-driver", "app": "gpu-operator-dra-driver", "deployment": "k8"},
+              ],
+              "gpu-operator": [
+                  {"name": "gpu-operator-k8", "app": "gpu-operator", "deployment": "k8"},
+              ],
+              "kmm": [
+                  {"name": "gpu-operator-kmm", "app": "gpu-operator", "deployment": "k8"},
+              ],
+          })
+
+          targets = COMPONENT_TARGETS.get(component, [])
+          if not targets:
+              print(f"::error::No test targets defined for component: {component}", file=sys.stderr)
+              sys.exit(1)
+
+          # --- Determine required component artifacts ---
+          # Union of all component artifacts needed across all deployment types
+
+          required_components = set()
+          for target in targets:
+              dep = target["deployment"]
+              required_components.update(target_components.get(dep, []))
+          if component == "dra":
+              required_components.add("dra")
+
+          # --- Build download plan ---
+
+          downloads = []
+          gha_artifacts = []
+
+          if s3_prefix:
+              parts = s3_prefix.split("/")
+              scenario = parts[1] if len(parts) >= 2 else "unknown"
+              identifier = parts[2] if len(parts) >= 3 else ""
+
+              for comp in sorted(required_components):
+                  comp_dir = COMPONENT_TO_DIR.get(comp, comp)
+                  if comp == component:
+                      downloads.append({"component": comp, "dir": comp_dir,
+                          "prefix": s3_prefix, "source": "just-built", "auto_detect": False})
+                  elif scenario == "nightly":
+                      downloads.append({"component": comp, "dir": comp_dir,
+                          "prefix": f"{comp_dir}/nightly/{identifier}", "source": "derived", "auto_detect": False})
+                  else:
+                      downloads.append({"component": comp, "dir": comp_dir,
+                          "prefix": "", "source": "auto-detect", "auto_detect": True})
+          else:
+              scenario = "pull_request"
+              comp_dir = COMPONENT_TO_DIR.get(component, component)
+              downloads.append({"component": component, "dir": comp_dir,
+                  "prefix": "", "source": "gha", "auto_detect": False})
+              COMPONENT_GHA_ARTIFACTS = {
+                  "exporter": [f"build-dme-{image_tag}", f"build-test-runner-{image_tag}", f"build-helm-{image_tag}"],
+                  "config-manager": [f"dcm-image-{image_tag}"],
+                  "dra": [f"dra-image-{image_tag}", f"dra-helm-{image_tag}"],
+              }
+              gha_artifacts = COMPONENT_GHA_ARTIFACTS.get(component, [])
+
+          print(json.dumps({"scenario": scenario, "targets": targets,
+              "downloads": downloads, "gha_artifacts": gha_artifacts}, indent=2))
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"test_targets={json.dumps(targets)}\n")
+              f.write(f"download_plan={json.dumps(downloads)}\n")
+              f.write(f"gha_artifacts={json.dumps(gha_artifacts)}\n")
+              f.write(f"scenario={scenario}\n")
+
+          PYEOF
+
+      - name: Configure AWS credentials (OIDC)
+        if: inputs.s3_prefix != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.ROCK_CI_S3_SECRET }}
+          aws-region: us-east-1
+
+      - name: Download artifacts from S3
+        id: download
+        if: inputs.s3_prefix != ''
+        env:
+          DOWNLOAD_PLAN: ${{ steps.plan.outputs.download_plan }}
+        run: |
+          set -euo pipefail
+
+          echo "${DOWNLOAD_PLAN}" | jq -c '.[]' | while read -r entry; do
+            COMP=$(echo "${entry}" | jq -r '.component')
+            COMP_DIR=$(echo "${entry}" | jq -r '.dir')
+            PREFIX=$(echo "${entry}" | jq -r '.prefix')
+            SOURCE=$(echo "${entry}" | jq -r '.source')
+            AUTO=$(echo "${entry}" | jq -r '.auto_detect')
+
+            if [ "${AUTO}" = "true" ]; then
+              LATEST=$(aws s3 ls "s3://${S3_BUCKET}/${COMP_DIR}/nightly/" 2>/dev/null \
+                | awk '{print $NF}' | tr -d '/' | sort -n | tail -1 || true)
+              if [ -z "${LATEST}" ]; then
+                echo "::warning::No nightly found for ${COMP} — skipping"
+                continue
+              fi
+              PREFIX="${COMP_DIR}/nightly/${LATEST}"
+            fi
+
+            mkdir -p "downloads/${COMP_DIR}"
+            echo "=== ${COMP} (${SOURCE}) — s3://${S3_BUCKET}/${PREFIX}/ ==="
+            aws s3 sync "s3://${S3_BUCKET}/${PREFIX}/" "downloads/${COMP_DIR}/" --no-progress || \
+              { echo "::warning::Failed to download ${COMP}"; continue; }
+            ls -lh "downloads/${COMP_DIR}/" 2>/dev/null || true
+          done
+
+          TOTAL=$(find downloads -type f 2>/dev/null | wc -l)
+          echo "Total files downloaded: ${TOTAL}"
+          [ "${TOTAL}" -eq 0 ] && { echo "::error::No artifacts downloaded"; exit 1; }
+          echo "download_ok=true" >> "$GITHUB_OUTPUT"
+
+      - name: Download artifacts from GHA (PR builds)
+        id: download-gha
+        if: inputs.s3_prefix == '' && steps.plan.outputs.gha_artifacts != '[]'
+        env:
+          GHA_ARTIFACTS: ${{ steps.plan.outputs.gha_artifacts }}
+          DOWNLOAD_PLAN: ${{ steps.plan.outputs.download_plan }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          COMP_DIR=$(echo "${DOWNLOAD_PLAN}" | jq -r '.[0].dir')
+          mkdir -p "downloads/${COMP_DIR}"
+
+          echo "${GHA_ARTIFACTS}" | jq -r '.[]' | while read -r name; do
+            echo "Downloading GHA artifact: ${name}"
+            gh run download "${{ github.run_id }}" \
+              --repo "${{ github.repository }}" \
+              --name "${name}" \
+              --dir "downloads/${COMP_DIR}"
+          done
+
+          ls -lhR downloads/
+          echo "download_ok=true" >> "$GITHUB_OUTPUT"
+
+      - name: Extract versions from downloaded artifacts
+        if: steps.download.outputs.download_ok == 'true' || steps.download-gha.outputs.download_ok == 'true'
+        env:
+          DOWNLOAD_PLAN: ${{ steps.plan.outputs.download_plan }}
+        run: |
+          set -euo pipefail
+
+          python3 << 'PYEOF'
+          import json, os, re
+
+          downloads = os.environ.get("GITHUB_WORKSPACE", ".") + "/downloads"
+          plan = json.loads(os.environ.get("DOWNLOAD_PLAN", "[]"))
+
+          versions = {}
+          for entry in plan:
+              comp = entry["component"]
+              comp_dir = os.path.join(downloads, entry["dir"])
+              if not os.path.isdir(comp_dir):
+                  continue
+              for f in sorted(os.listdir(comp_dir)):
+                  if f.startswith("."):
+                      continue
+                  m = re.match(r'.+?-(v\d\S+)\.(tar\.gz|tgz)$', f)
+                  if m:
+                      versions[comp] = m.group(1)
+                      break
+
+          with open("versions.json", "w") as f:
+              json.dump(versions, f, indent=2)
+          print("Extracted versions:")
+          print(json.dumps(versions, indent=2))
+          PYEOF
+
+      - name: Prepare summary
+        if: always()
+        env:
+          COMPONENT: ${{ inputs.component }}
+          S3_PREFIX: ${{ inputs.s3_prefix }}
+          DOWNLOAD_OK: ${{ steps.download.outputs.download_ok }}
+          TARGETS: ${{ steps.plan.outputs.test_targets }}
+          SCENARIO: ${{ steps.plan.outputs.scenario }}
+        run: |
+          TARGET_COUNT=$(echo "${TARGETS:-[]}" | jq 'length' 2>/dev/null || echo 0)
           {
-            echo "## ROCm Orchestrator — \`${{ inputs.component }}\`"
+            echo "## Orchestrator Prepare — \`${COMPONENT}\`"
             echo ""
             echo "| | |"
             echo "|---|---|"
-            echo "| Component | \`${{ inputs.component }}\` |"
-            echo "| Scenario | \`${{ inputs.scenario }}\` |"
-            echo "| S3 prefix | \`${{ inputs.s3_prefix || 'n/a (standalone)' }}\` |"
-            echo "| gpu-operator access | ${{ steps.checkout.outcome }} |"
-            echo "| Result | ${{ steps.verdict.outputs.result }} |"
+            echo "| Component | \`${COMPONENT}\` |"
+            echo "| Scenario | \`${SCENARIO:-unknown}\` |"
+            echo "| S3 prefix | \`${S3_PREFIX:-n/a}\` |"
+            echo "| S3 download | ${DOWNLOAD_OK:-skipped} |"
+            echo "| Test targets | ${TARGET_COUNT} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # --------------------------------------------------------------------------
+  # Test execution — blocked on testbed access
+  #
+  # Runs targets sequentially (1 node). For each target:
+  #
+  #   1. Generate manifest:
+  #      python3 ci-internal/gen_image_manifest.py \
+  #        --operator-config ci-internal/operators/gpu-operator.yml \
+  #        --seed-image-manifest ci-internal/sanity-images.yml \
+  #        --versions-file versions.json \
+  #        --target <deployment> \
+  #        --download-dir ./downloads \
+  #        --output /tmp/images.yaml
+  #
+  #   2. Run tests:
+  #      ci-internal/run_sanity.sh \
+  #        --app <app> \
+  #        --registry local \
+  #        --seed-image-manifest /tmp/images.yaml \
+  #        --testbed /path/to/testbed.json
+  #
+  #   3. Collect results, clean up before next target
+  #
+  # run_sanity.sh handles: local registry, image loading, cluster prep, pytest
+  # --------------------------------------------------------------------------
+
+  report:
+    name: Report
+    needs: [prepare]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      result: ${{ steps.verdict.outputs.result }}
+    steps:
+      - name: Verdict
+        id: verdict
+        env:
+          PREPARE_RESULT: ${{ needs.prepare.result }}
+          S3_PREFIX: ${{ inputs.s3_prefix }}
+        run: |
+          if [ -z "${S3_PREFIX}" ]; then
+            echo "PR build — validation skipped"
+            echo "result=pass" >> "$GITHUB_OUTPUT"
+          elif [ "${PREPARE_RESULT}" = "success" ]; then
+            echo "Prepare succeeded — test execution not yet implemented"
+            echo "result=pass" >> "$GITHUB_OUTPUT"
+          else
+            echo "Prepare failed"
+            echo "result=fail" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Report summary
+        if: always()
+        env:
+          COMPONENT: ${{ inputs.component }}
+          S3_PREFIX: ${{ inputs.s3_prefix }}
+          PREPARE_RESULT: ${{ needs.prepare.result }}
+          RESULT: ${{ steps.verdict.outputs.result }}
+        run: |
+          {
+            echo "## Orchestrator Report — \`${COMPONENT}\`"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Component | \`${COMPONENT}\` |"
+            echo "| S3 prefix | \`${S3_PREFIX:-n/a}\` |"
+            echo "| Prepare | ${PREPARE_RESULT} |"
+            echo "| Test | not yet implemented |"
+            echo "| **Result** | **${RESULT}** |"
           } >> "$GITHUB_STEP_SUMMARY"
