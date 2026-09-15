@@ -348,7 +348,7 @@ def argo_workflow_setup(gpu_cluster, environment, request):
     # The ANR reboot step runs with hostPID/hostNetwork/privileged=true; on OpenShift
     # every pod must satisfy at least one SCC, and the default restricted-v2 disallows
     # all three.  Without this binding the reboot pod is rejected at admission.
-    # See: docs/autoremediation/auto-remediation.md (currently undocumented — GPUOP-918).
+    # See: docs/autoremediation/auto-remediation.md (currently undocumented — TODO).
     _scc_crb_name = "anr-reboot-privileged-scc"
     gpu_operator_namespace = environment.gpu_operator_namespace
     workflow_sa = anr_util.get_anr_workflow_sa(gpu_operator_namespace)

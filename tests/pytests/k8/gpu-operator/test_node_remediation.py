@@ -45,7 +45,7 @@ def skip_if_anr_unsupported():
 # evicted on single-node clusters, breaking the operator's reconciler.
 OPENSHIFT_KMM_NAMESPACE = 'openshift-kmm'
 
-# Workaround for GPUOP-663: ANR workflow pods need amd-dcm toleration on DCM-managed nodes.
+# Workaround for Known issue: ANR workflow pods need amd-dcm toleration on DCM-managed nodes.
 _DCM_TOLERATIONS = [
     {"key": "amd-dcm", "value": "up", "effect": "NoSchedule"},
     {"key": "amd-dcm", "value": "up", "effect": "NoExecute"},
@@ -55,7 +55,7 @@ _DCM_TOLERATIONS = [
 def _add_dcm_workflow_tolerations(tcfg):
     """Append amd-dcm tolerations to nodeRemediationTaints when DCM is enabled.
 
-    GPUOP-663: The operator does not auto-add amd-dcm tolerations to workflow pods.
+    Known issue: The operator does not auto-add amd-dcm tolerations to workflow pods.
     On DCM-managed nodes the amd-dcm taint blocks workflow scheduling. This workaround
     injects the tolerations via nodeRemediationTaints until the operator is fixed.
 
@@ -118,7 +118,7 @@ def deviceconfig_install(gpu_cluster, images, gpu_operator_install,
     'metadata.namespace' : environment.gpu_operator_namespace,
     'driver.enable' : True,
     'remediationWorkflow.nodeDrainPolicy.ignoreNamespaces': _drain_ignore_namespaces(environment),
-    # Workaround (GPUOP-975): Explicitly set testerImage from the manifest so all ANR tests use a valid image.
+    # Workaround (testerImage fallback): Explicitly set testerImage from the manifest so all ANR tests use a valid image.
     'remediationWorkflow.testerImage.repository': images.get('testRunner.image.repository'),
     'remediationWorkflow.testerImage.version': images.get('testRunner.image.version'),
     }
@@ -911,7 +911,7 @@ def test_custom_taint(gpu_cluster, images, deviceconfig_install, environment, re
     nodeRemediationTaints and verifies it appears on the node after the taint step
     succeeds. Confirms the default 'amd-gpu-unhealthy' taint is not used.
 
-    Note: taint removal verification (on successful workflow) is blocked by GPUOP-614
+    Note: taint removal verification (on successful workflow) is blocked by known limitation
     (xargs not found in test-runner image). The workflow is aborted after the taint
     step to verify taint application only.
     """
@@ -993,7 +993,7 @@ def test_custom_taint(gpu_cluster, images, deviceconfig_install, environment, re
     Logger.info(f"Custom taint '{CUSTOM_TAINT_KEY}={CUSTOM_TAINT_VALUE}:{CUSTOM_TAINT_EFFECT}' "
                 f"verified on '{node_name}'")
 
-    # Abort — taint-removal verification blocked by GPUOP-614 (xargs not found in test-runner image)
+    # Abort — taint-removal verification blocked by known limitation (xargs not found in test-runner image)
     anr_util._abort_workflow(node_name)
     anr_util.patch_node_condition(environment, node_name, condition_type=CONDITION, condition_status=False)
 

@@ -26,7 +26,7 @@ pip install paramiko pyyaml
 
 ## env.json Format
 
-The scripts read master node IP and credentials from `env.json` (or `/warmd.json` as fallback).
+The scripts read master node IP and credentials from `env.json`.
 
 ```json
 {
@@ -75,7 +75,7 @@ python3 install_network_operator.py --env env.json --skip-wait
 
 # Custom paths
 python3 install_network_operator.py \
-    --env /warmd.json \
+    --env /path/to/env.json \
     --manifest /path/to/image_manifest_1_1_0.yaml \
     --pf-networkconfig /path/to/pf_networkconfig.yaml \
     --vf-networkconfig /path/to/vf_networkconfig.yaml
@@ -105,7 +105,7 @@ python3 install_network_operator.py \
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--env` | `env.json` | Path to env.json or warmd.json |
+| `--env` | `env.json` | Path to env.json |
 | `--manifest` | `image_manifest_1_1_0.yaml` | Image manifest with chart version |
 | `--pf-networkconfig` | `pf_networkconfig.yaml` | NetworkConfig for PF nodes |
 | `--vf-networkconfig` | `vf_networkconfig.yaml` | NetworkConfig for VF nodes |
@@ -141,7 +141,7 @@ Order is the reverse of install (operands must be deleted before operator):
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--env` | `env.json` | Path to env.json or warmd.json |
+| `--env` | `env.json` | Path to env.json |
 | `--skip-wait` | off | Do not wait for pods to terminate |
 
 ## Notes

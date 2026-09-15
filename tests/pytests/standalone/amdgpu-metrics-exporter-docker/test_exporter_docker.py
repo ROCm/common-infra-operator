@@ -303,7 +303,7 @@ def test_exporter_no_persistent_kfd_hold(gpu_cluster, run_exporter_docker_contai
 
     Root cause: amdsmi_init opens /dev/kfd and holds the fd for the container process
     lifetime. While held, amd-smi reset -r fails, blocking GPU partition-mode switching.
-    See DCLABOPS-17854 for context.
+    See test_exporter_debian_pkg for context.
 
     Required behavior:
     - At idle (no active scrape): /dev/kfd must NOT be held by the container process.

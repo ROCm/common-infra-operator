@@ -1807,7 +1807,7 @@ def test_partitioning_test_runner(gpu_cluster, deviceconfig_install, environment
         time.sleep(2)
     debug_on_failure(environment, job_status == "Running",
                      f"job should be in Running state, but found: {job_status}")
-    #no need to wait for completion GPUOP-520
+    #no need to wait for completion known behavior
     verify_logs(environment, [f'Starting iteration 1 of 1 for test: {recipe}'], 'test-runner-manual')
     k8_util.k8_delete_job(namespace, job_name)
 

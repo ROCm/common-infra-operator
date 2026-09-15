@@ -599,7 +599,7 @@ def cleanup_workflow(deviceconfig_install, environment, condition_type, config_o
             del tcfg['remediationWorkflow.config']
         # Restore testerImage to the fixture default (RVS test-runner) so that
         # tests which override it (e.g. to AGFHC) don't leak into subsequent tests,
-        # and tests that don't override it still get a valid image (GPUOP-975).
+        # and tests that don't override it still get a valid image (testerImage fallback).
         tcfg['remediationWorkflow.testerImage.repository'] = images.get('testRunner.image.repository')
         tcfg['remediationWorkflow.testerImage.version'] = images.get('testRunner.image.version')
         custom_taints = tcfg.get('remediationWorkflow.nodeRemediationTaints', [])

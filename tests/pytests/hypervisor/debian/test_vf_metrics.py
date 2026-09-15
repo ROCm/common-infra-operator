@@ -34,7 +34,7 @@ The exporter is deployed by the module-scoped deploy_sriov_exporter_debian
 fixture imported from the hypervisor/debian test suite.  The vf_topology
 fixture is session-scoped and shared across all test_vf_metrics tests.
 
-GPUOP-924: gfx and umc activity readings may show zero during workload on some
+Known issue: gfx and umc activity readings may show zero during workload on some
 firmware revisions.  Affected tests carry inline comments; they pass when the
 hardware reports non-zero values as expected.
 """
@@ -284,14 +284,14 @@ def test_vf_gfx_activity_under_workload(
     """
     amd_gpu_gfx_activity must be > 0 on VF0 while rocm-pytorch-gemm-stress is running.
 
-    # GPUOP-924: pending re-validation (zero readings observed on some firmware revisions)
+    # Known issue: pending re-validation (zero readings observed on some firmware revisions)
     """
     node = gim_node.node
     val = _scrape_vf_metric(node, "amd_gpu_gfx_activity", gpu_id=0)
     Logger.info(f"amd_gpu_gfx_activity (VF0) under workload = {val}")
     assert val > 0, (
         f"Expected amd_gpu_gfx_activity > 0 on VF0 during workload, got {val}. "
-        "GPUOP-924: verify firmware version supports VF gfx activity reporting."
+        "Known issue: verify firmware version supports VF gfx activity reporting."
     )
 
 
@@ -302,14 +302,14 @@ def test_vf_umc_activity_under_workload(
     """
     amd_gpu_umc_activity must be > 0 on VF0 while rocm-pytorch-gemm-stress is running.
 
-    # GPUOP-924: pending re-validation (zero readings observed on some firmware revisions)
+    # Known issue: pending re-validation (zero readings observed on some firmware revisions)
     """
     node = gim_node.node
     val = _scrape_vf_metric(node, "amd_gpu_umc_activity", gpu_id=0)
     Logger.info(f"amd_gpu_umc_activity (VF0) under workload = {val}")
     assert val > 0, (
         f"Expected amd_gpu_umc_activity > 0 on VF0 during workload, got {val}. "
-        "GPUOP-924: verify firmware version supports VF umc activity reporting."
+        "Known issue: verify firmware version supports VF umc activity reporting."
     )
 
 

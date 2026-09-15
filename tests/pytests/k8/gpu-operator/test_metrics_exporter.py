@@ -1482,9 +1482,9 @@ def test_exporter_pod_annotations(gpu_cluster, deviceconfig_install, environment
         "kind": "Pod",
         "metadata": {
             "annotations": {
-                "cni.projectcalico.org/containerID": "c59f3e17575ea8739d828bb4764de7398d5136474b45d39b1ae7a6cec895cbe7",
-                "cni.projectcalico.org/podIP": "192.168.125.91/32",
-                "cni.projectcalico.org/podIPs": "192.168.125.91/32",
+                "cni.projectcalico.org/containerID": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+                "cni.projectcalico.org/podIP": "192.0.2.10/32",
+                "cni.projectcalico.org/podIPs": "192.0.2.10/32",
                 "label-1": "pod-1",
                 "label-2": "pod-2"
              },

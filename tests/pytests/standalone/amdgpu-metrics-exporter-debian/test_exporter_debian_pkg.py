@@ -481,9 +481,8 @@ def test_gpuagent_port_scan(gpu_cluster, deploy_debian_package, environment):
         [{'address': '[::ffff:127.0.0.1]', 'port': '50061'}]
 
     Security Rationale:
-        GPUAgent is an internal service for local GPU management. Exposing it
-        on 0.0.0.0 would allow network access, potentially creating a security
-        vulnerability for unauthorized GPU control.
+        The management service must bind to localhost only. Exposing it on
+        0.0.0.0 would allow unauthorized network access.
 
     Args:
         gpu_cluster: GPU cluster fixture
@@ -606,7 +605,7 @@ def test_exporter_no_persistent_kfd_hold(gpu_cluster, deploy_debian_package, ima
 
     Root cause: amdsmi_init opens /dev/kfd and holds the fd for the process lifetime.
     While held, amd-smi reset -r fails, blocking GPU partition-mode switching.
-    See DCLABOPS-17854 for the fleet-observability gpuagent fix. This test verifies
+    This test verifies
     the same fix is present in the standalone amd-metrics-exporter build.
 
     Required behavior:

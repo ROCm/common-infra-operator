@@ -38,12 +38,9 @@ _run_progression = {}
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-JOBD_ENV_VARS = [
-    "JOB_ID", "JOB_PR", "JOB_BRANCH", "JOB_BRANCH_COMMIT",
-    "JOB_BASE_BRANCH", "JOB_BASE_COMMIT", "JOB_REPOSITORY",
-    "JOB_BASE_REPOSITORY", "JOB_FORK_REPOSITORY", "JOBD_VCPUS",
-    "TARGET_ID", "TARGET_NAME", "RELEASE", "MAX_DURATION",
-    "GITHUB_LABELS", "HOST_IP",
+CI_ENV_VARS = [
+    "CI", "GITHUB_RUN_ID", "GITHUB_REPOSITORY", "GITHUB_REF",
+    "GITHUB_SHA", "GITHUB_EVENT_NAME", "GITHUB_WORKFLOW",
 ]
 
 INFRA_FAILURE_PATTERNS = [
@@ -160,7 +157,7 @@ def generate(session, logdir):
 
     # --- job_info ---
     report["job_info"] = {
-        var.lower(): os.environ.get(var) for var in JOBD_ENV_VARS
+        var.lower(): os.environ.get(var) for var in CI_ENV_VARS
     }
 
     # --- platform ---

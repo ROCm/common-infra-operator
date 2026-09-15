@@ -22,11 +22,11 @@ install_operator.py
 Installs AMD Network Operator (via Helm) and creates the NetworkConfig operand
 on the master node of a Kubernetes cluster.
 
-Master node IP and credentials are read from env.json (or /warmd.json).
+Master node IP and credentials are read from env.json.
 
 Usage:
     python3 install_operator.py [--env /path/to/env.json]
-    python3 install_operator.py --env /warmd.json
+    python3 install_operator.py --env env.json
     python3 install_operator.py --manifest /path/to/image_manifest_1_1_0.yaml
 """
 
@@ -106,13 +106,13 @@ def load_env_json(env_path):
     """Load env.json and return the parsed dict."""
     env_path = Path(env_path)
     if not env_path.is_file():
-        # Fallback: check /warmd.json
-        warmd = Path("/warmd.json")
-        if warmd.is_file():
-            env_path = warmd
-            info(f"Using fallback testbed file: {warmd}")
+        # Fallback: check TESTBED_CONFIG_PATH env var
+        fallback = Path(os.environ.get("TESTBED_CONFIG_PATH", ""))
+        if fallback.is_file():
+            env_path = fallback
+            info(f"Using fallback testbed file: {fallback}")
         else:
-            die(f"env file not found: {env_path} (also checked /warmd.json)")
+            die(f"env file not found: {env_path}")
     with open(env_path, "r") as f:
         return json.load(f)
 
@@ -360,7 +360,7 @@ def parse_args():
     )
     parser.add_argument(
         "--env", default=str(DEFAULT_ENV_JSON),
-        help="Path to env.json or warmd.json (default: %(default)s)",
+        help="Path to env.json (default: %(default)s)",
     )
     parser.add_argument(
         "--manifest", default=str(DEFAULT_MANIFEST),
