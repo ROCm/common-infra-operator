@@ -1781,7 +1781,7 @@ def test_partitioning_test_runner(gpu_cluster, deviceconfig_install, environment
     token = k8_util.k8_create_token(namespace, sa_name, "1h")
     debug_on_failure(environment, token != None,
                      f"Failed to create token for the service-account : {sa_name}")
-    Logger.info(f"TOKEN={token}")
+    Logger.info(f"TOKEN=<{len(token)} chars>")
 
     time.sleep(30) # Wait for exporter to start working
     # Get endpoint for each node

@@ -706,7 +706,7 @@ class K8Helper:
             token = k8_util.k8_create_token(namespace, sa_name, "1h")
             K8Helper.triage(environment, token is not None,
                             f"Failed to create token for the service-account : {sa_name}")
-            Logger.info(f"TOKEN={token}")
+            Logger.info(f"TOKEN=<{len(token)} chars>")
 
             # Create Job
             k8_util.k8_create_test_runner_job(namespace,

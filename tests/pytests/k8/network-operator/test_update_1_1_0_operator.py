@@ -83,7 +83,7 @@ def _run_on_master(master: dict, command: str, timeout: int = 120) -> str:
 
     target = f"{master['username']}@{master['ip']}"
     cmd = [
-        "sshpass", "-p", master["password"],
+        "sshpass", "-e",
         "ssh",
         "-o", "StrictHostKeyChecking=no",
         "-o", "UserKnownHostsFile=/dev/null",
@@ -91,11 +91,13 @@ def _run_on_master(master: dict, command: str, timeout: int = 120) -> str:
         target,
         command,
     ]
+    env = {**os.environ, "SSHPASS": master["password"]}
     try:
         out = subprocess.check_output(
             cmd,
             timeout=timeout,
             stderr=subprocess.STDOUT,
+            env=env,
         ).decode("utf-8", errors="replace")
         return out
     except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as exc:

@@ -328,7 +328,7 @@ def wait_for_vm_ssh(node, session: "VMSession",
     ssh_port  = session.ssh_port
     deadline  = time.time() + timeout
     ssh_probe = (
-        f"sshpass -p {shlex.quote(_VM_PASSWORD)} ssh -o StrictHostKeyChecking=no "
+        f"SSHPASS={shlex.quote(_VM_PASSWORD)} sshpass -e ssh -o StrictHostKeyChecking=no "
         f"-o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 "
         f"-p {ssh_port} {shlex.quote(_VM_USER)}@127.0.0.1 true"
     )
@@ -354,7 +354,7 @@ def vm_run_command(node, ssh_port: int, cmd: str, vm_user: str = _VM_USER,
     Uses sshpass for password auth to the VM (key auth not required for disposable VMs).
     """
     ssh_cmd = (
-        f"sshpass -p {shlex.quote(vm_password)} ssh -o StrictHostKeyChecking=no "
+        f"SSHPASS={shlex.quote(vm_password)} sshpass -e ssh -o StrictHostKeyChecking=no "
         f"-o UserKnownHostsFile=/dev/null "
         f"-p {ssh_port} {shlex.quote(vm_user)}@127.0.0.1 {shlex.quote(cmd)}"
     )

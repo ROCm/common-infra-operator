@@ -30,7 +30,7 @@ Master node IP and credentials are read from env.json.
 
 Usage:
     python3 uninstall_network_operator.py [--env /path/to/env.json]
-    python3 uninstall_network_operator.py --env env.json
+    python3 uninstall_network_operator.py --env /path/to/env.json
 """
 
 import argparse
@@ -107,15 +107,16 @@ def _ssh_run_once(ip, username, password, cmd, timeout=120):
     """Execute a single command on a remote host via SSH."""
     if paramiko is None:
         ssh_cmd = [
-            "sshpass", "-p", password,
+            "sshpass", "-e",
             "ssh", "-o", "StrictHostKeyChecking=no",
             "-o", "UserKnownHostsFile=/dev/null",
             f"{username}@{ip}",
             cmd,
         ]
+        env = {**os.environ, "SSHPASS": password}
         try:
             proc = subprocess.run(
-                ssh_cmd, capture_output=True, text=True, timeout=timeout
+                ssh_cmd, capture_output=True, text=True, timeout=timeout, env=env
             )
             return proc.returncode, proc.stdout, proc.stderr
         except subprocess.TimeoutExpired:

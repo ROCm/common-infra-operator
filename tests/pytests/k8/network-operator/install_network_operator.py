@@ -26,7 +26,7 @@ Master node IP and credentials are read from env.json.
 
 Usage:
     python3 install_operator.py [--env /path/to/env.json]
-    python3 install_operator.py --env env.json
+    python3 install_operator.py --env /path/to/env.json
     python3 install_operator.py --manifest /path/to/image_manifest_1_1_0.yaml
 """
 
@@ -106,7 +106,6 @@ def load_env_json(env_path):
     """Load env.json and return the parsed dict."""
     env_path = Path(env_path)
     if not env_path.is_file():
-        # Fallback: check TESTBED_CONFIG_PATH env var
         fallback = Path(os.environ.get("TESTBED_CONFIG_PATH", ""))
         if fallback.is_file():
             env_path = fallback
@@ -175,15 +174,16 @@ def _ssh_run_once(ip, username, password, cmd, timeout=120):
     if paramiko is None:
         # Fallback to sshpass + ssh
         ssh_cmd = [
-            "sshpass", "-p", password,
+            "sshpass", "-e",
             "ssh", "-o", "StrictHostKeyChecking=no",
             "-o", "UserKnownHostsFile=/dev/null",
             f"{username}@{ip}",
             cmd,
         ]
+        env = {**os.environ, "SSHPASS": password}
         try:
             proc = subprocess.run(
-                ssh_cmd, capture_output=True, text=True, timeout=timeout
+                ssh_cmd, capture_output=True, text=True, timeout=timeout, env=env
             )
             return proc.returncode, proc.stdout, proc.stderr
         except subprocess.TimeoutExpired:
@@ -237,13 +237,14 @@ def scp_file(ip, username, password, local_path, remote_path):
 
     # Fallback: sshpass + scp
     cmd = [
-        "sshpass", "-p", password,
+        "sshpass", "-e",
         "scp", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
         str(local_path),
         f"{username}@{ip}:{remote_path}",
     ]
+    env = {**os.environ, "SSHPASS": password}
     try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
         return True
     except Exception as e:
         warn(f"scp failed: {e}")
