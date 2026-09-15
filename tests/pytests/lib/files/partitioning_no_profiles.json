@@ -1,0 +1,6 @@
+{
+    "gpu-config-profiles": { },
+    "gpuClientSystemdServices": {
+        "names": ["amd-metrics-exporter", "gpuagent"]
+    }
+}

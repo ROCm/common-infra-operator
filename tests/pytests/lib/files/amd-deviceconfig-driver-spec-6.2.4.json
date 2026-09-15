@@ -1,0 +1,11 @@
+{
+    "driver-deployment" : "deviceconfig",
+    "default-version" : "6.2.4",
+    "alternative-versions" : [
+        "6.2.2",
+        "6.2.3",
+        "6.3",
+        "6.4",
+        "6.4.3"
+    ]
+}
