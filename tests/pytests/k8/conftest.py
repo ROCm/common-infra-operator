@@ -61,10 +61,8 @@ def init_testbed(request, gpu_cluster, gpu_operator_release_name, exporter_relea
 
         # remove gpu-operator helm-chart
         if hasattr(environment, "gpu_operator_namespace"):
-            # remove any deviceconfig instances
-            device_cfg_info = k8_util.k8_get_deviceconfigs_info(environment.gpu_operator_namespace, None)
-            for devcfg_name, _ in device_cfg_info.items():
-                k8_util.k8_delete_deviceconfig_cr(environment.gpu_operator_namespace, devcfg_name)
+            # Force-delete any DeviceConfigs (strips finalizers from stale CRs left by canceled runs)
+            k8_util.k8_force_delete_all_deviceconfigs(environment.gpu_operator_namespace)
 
             if helm_util.is_helm_release_present(gpu_cluster, gpu_operator_release_name, environment.gpu_operator_namespace):
                 Logger.warn(f"helm {gpu_operator_release_name} is already present - cleanup")
@@ -76,6 +74,9 @@ def init_testbed(request, gpu_cluster, gpu_operator_release_name, exporter_relea
                 Logger.warn(f"helm {exporter_release_name} is already present - cleanup")
                 helm_util.helm_uninstall_with_recovery(gpu_cluster, exporter_release_name,
                                                        environment.exporter_namespace)
+
+        # Remove stale labels and taints from nodes (remediating, metricsexporter health, driver-upgrade taints)
+        k8_util.k8_cleanup_stale_node_state()
 
     Logger.info("Cleanup before starting test session")
     _cleanup_steps()

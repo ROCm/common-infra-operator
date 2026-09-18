@@ -53,10 +53,8 @@ def init_testbed(request, gpu_cluster, gpu_operator_release_name, environment):
 
         # remove gpu-operator helm-chart
         if hasattr(environment, "gpu_operator_namespace"):
-            # remove any deviceconfig instances
-            device_cfg_info = k8_util.k8_get_deviceconfigs_info(environment.gpu_operator_namespace, None)
-            for devcfg_name, _ in device_cfg_info.items():
-                k8_util.k8_delete_deviceconfig_cr(environment.gpu_operator_namespace, devcfg_name)
+            # Force-delete any DeviceConfigs (strips finalizers from stale CRs left by canceled runs)
+            k8_util.k8_force_delete_all_deviceconfigs(environment.gpu_operator_namespace)
 
             # Check for subscriptions - nfd, kernel-module-management
             ret_code, subscriptions, ret_stderr = k8_util.k8_list_subscriptions()
@@ -67,54 +65,11 @@ def init_testbed(request, gpu_cluster, gpu_operator_release_name, environment):
                 found = next((sub for sub in subscriptions if sub['spec']['name'] == item), None)
                 K8Helper.triage(environment, (found != None), f"Failed to find subscription {item}")
 
-            gpu_op_sub = next((sub for sub in subscriptions if sub['spec']['name'] == gpu_operator_release_name), None)
+            # Force-clean all OLM artifacts (handles stale CSVs, CRDs, finalizers from canceled runs)
+            olm_util.olm_force_cleanup(gpu_cluster, gpu_operator_release_name, environment.gpu_operator_namespace)
 
-            # remove existing gpu-operator olm-bundle
-            if gpu_op_sub:
-                Logger.debug(f"Found active subscription for {gpu_operator_release_name}, uninstalling")
-                ret_code, ret_stdout, ret_stderr = olm_util.olm_cleanup(gpu_cluster, gpu_operator_release_name, environment.gpu_operator_namespace)
-                K8Helper.triage(environment, (ret_code == 0), f"Failed to uninstall {gpu_operator_release_name}", expected_to_fail = True)
-                time.sleep(10)
-            else:
-                Logger.debug(f"No active subscription for {gpu_operator_release_name} found")
-
-            # Check for catalogsources
-            ret_code, catalogsources, ret_stderr = k8_util.k8_list_catalogsources()
-            K8Helper.triage(environment, (ret_code == 0),
-                            f"Failed to collect catalogsources from openshift-cluster, error {ret_stderr}")
-            gpu_op_catalog_name = f"{gpu_operator_release_name}-catalog"
-            gpu_op_catalog = next((catalog for catalog in catalogsources if catalog['metadata']['name'] == gpu_op_catalog_name), None)
-            if gpu_op_catalog:
-                ret_code, _, ret_stderr = k8_util.k8_delete_custom_resource("operators.coreos.com", "v1alpha1", "catalogsources",
-                                                                            environment.gpu_operator_namespace, gpu_op_catalog_name)
-                K8Helper.triage(environment, (ret_code == 0),
-                                f"Failed to delete catalogsources from openshift-cluster, error {ret_stderr}", expected_to_fail=True)
-            else:
-                Logger.debug(f"No gpu-operator catalogsources found in the cluster")
-
-            # Check for clusterserviceversions
-            ret_code, csv_list, ret_stderr = k8_util.k8_list_clusterserviceversions()
-            K8Helper.triage(environment, (ret_code == 0),
-                            f"Failed to collect clusterserviceversions from openshift-cluster, error {ret_stderr}")
-            gpu_op_csv_name = f"{gpu_operator_release_name}"
-            gpu_op_csv = next((csv for csv in csv_list if gpu_operator_release_name in csv['metadata']['name']), None)
-            if gpu_op_csv:
-                ret_code, _, ret_stderr = k8_util.k8_delete_custom_resource("operators.coreos.com", "v1alpha1", "clusterserviceversions",
-                                                                            environment.gpu_operator_namespace, gpu_op_csv['metadata']['name'])
-                K8Helper.triage(environment, (ret_code == 0),
-                                f"Failed to delete clusterserviceversions from openshift-cluster, error {ret_stderr}", expected_to_fail=True)
-            else:
-                Logger.debug(f"No gpu-operator csv found in the cluster")
-
-            # Delete cluster-scoped Operator CR — stale entry blocks reinstall
-            k8_util.k8_delete_custom_resource(
-                "operators.coreos.com", "v1", "operators", "",
-                f"{gpu_operator_release_name}.{environment.gpu_operator_namespace}")
-
-            # Delete stale controller-manager deployment (survives broken OLM installs)
-            k8_util.k8_delete_deployment(
-                environment.gpu_operator_namespace,
-                f"{gpu_operator_release_name}-controller-manager")
+        # Remove stale labels and taints from nodes (remediating, metricsexporter health, driver-upgrade taints)
+        k8_util.k8_cleanup_stale_node_state()
 
     Logger.info("Cleanup before starting test session")
     _cleanup_steps()
