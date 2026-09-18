@@ -17,9 +17,10 @@ on:
         required: true
         type: string
       tarball_url_default:
-        description: 'Default tarball URL (used as fallback for PR and dispatch triggers)'
-        required: true
+        description: 'Tarball URL for pull_request builds'
+        required: false
         type: string
+        default: ''
       s3_component_prefix:
         description: 'S3 path prefix (e.g. device-metrics-exporter, device-config-manager)'
         required: true
@@ -29,7 +30,7 @@ on:
         required: true
         type: string
       trigger_event:
-        description: 'Trigger event name (schedule, pull_request, workflow_dispatch)'
+        description: 'Trigger event name (schedule, pull_request, pre-release, workflow_dispatch)'
         required: true
         type: string
       trigger_sha:
@@ -100,12 +101,13 @@ on:
         required: true
         type: string
       trigger_event:
-        description: 'Simulated trigger event (schedule, pull_request, workflow_dispatch)'
+        description: 'Simulated trigger event (schedule, pull_request, pre-release, workflow_dispatch)'
         required: true
         type: choice
         options:
           - schedule
           - pull_request
+          - pre-release
           - workflow_dispatch
       trigger_sha:
         description: 'Simulated SHA'
@@ -150,7 +152,7 @@ jobs:
       build_needed: ${{ steps.dedup.outputs.cache-hit != 'true' || inputs.force_rebuild == true }}
     steps:
       - name: Configure AWS credentials for dispatch counter
-        if: inputs.trigger_event == 'workflow_dispatch'
+        if: inputs.trigger_event == 'workflow_dispatch' || inputs.trigger_event == 'pre-release'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.ROCK_CI_S3_SECRET }}
@@ -202,17 +204,32 @@ jobs:
             ;;
 
           workflow_dispatch)
-            TARBALL_URL="${INPUT_URL:-${TARBALL_URL_DEFAULT}}"
-            BASENAME=$(basename "${TARBALL_URL}" .tar.gz)
-            IMAGE_TAG="${INPUT_IMAGE_TAG:-${BASENAME#therock-dist-linux-multiarch-}}"
-
-            if ! LISTING=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/pre-release/" 2>&1); then
+            TARBALL_URL="${INPUT_URL}"
+            if ! LISTING=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/release/" 2>&1); then
               echo "::error::Failed to query S3 for build counter: ${LISTING}"
               exit 1
             fi
             LAST_N=$(echo "${LISTING}" | grep -oP "${VERSION}-\K\d+" | sort -n | tail -1 || true)
-            SUFFIX=$(( ${LAST_N:-0} + 1 ))
-            S3_PREFIX="${S3_COMPONENT_PREFIX}/pre-release/${VERSION}-${SUFFIX}"
+            N=$(( ${LAST_N:-0} + 1 ))
+            SUFFIX="${N}"
+            IMAGE_TAG="${INPUT_IMAGE_TAG:-${VERSION}-${N}}"
+            S3_PREFIX="${S3_COMPONENT_PREFIX}/release/${IMAGE_TAG}"
+            SCENARIO="release"
+            ;;
+
+          pre-release)
+            TARBALL_URL="${INPUT_URL}"
+            BASENAME=$(basename "${TARBALL_URL}" .tar.gz)
+            ROCM_VERSION="${BASENAME#therock-dist-linux-multiarch-}"
+            if ! LISTING=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/pre-release/" 2>&1); then
+              echo "::error::Failed to query S3 for build counter: ${LISTING}"
+              exit 1
+            fi
+            LAST_N=$(echo "${LISTING}" | grep -oP "${VERSION}-${ROCM_VERSION}-\K\d+" | sort -n | tail -1 || true)
+            N=$(( ${LAST_N:-0} + 1 ))
+            SUFFIX="${ROCM_VERSION}-${N}"
+            IMAGE_TAG="${VERSION}-${SUFFIX}"
+            S3_PREFIX="${S3_COMPONENT_PREFIX}/pre-release/${IMAGE_TAG}"
             SCENARIO="pre-release"
             ;;
 
