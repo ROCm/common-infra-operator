@@ -450,6 +450,90 @@ def k8_delete_deviceconfig_cr(namespace : str, name : str) -> (int, str, str):
     """
     return k8_delete_custom_resource("amd.com", "v1alpha1", "deviceconfigs", namespace, name)
 
+
+def k8_force_delete_all_deviceconfigs(namespace: str):
+    """Strip finalizers and delete all DeviceConfig CRs in the namespace.
+
+    Handles stale DeviceConfigs left by canceled/crashed test runs where
+    the controller is gone and the finalizer can never be reconciled.
+    """
+    custom_objects_api = client.CustomObjectsApi()
+    try:
+        cr_info = custom_objects_api.list_namespaced_custom_object(
+            group="amd.com", version="v1alpha1", plural="deviceconfigs", namespace=namespace)
+    except ApiException:
+        return
+
+    for item in cr_info.get("items", []):
+        name = item["metadata"]["name"]
+        finalizers = item["metadata"].get("finalizers", [])
+        if finalizers:
+            Logger.warning(f"Stripping finalizers from stuck DeviceConfig {name}: {finalizers}")
+            try:
+                custom_objects_api.patch_namespaced_custom_object(
+                    group="amd.com", version="v1alpha1", plural="deviceconfigs",
+                    namespace=namespace, name=name,
+                    body={"metadata": {"finalizers": []}},
+                    _content_type="application/merge-patch+json")
+            except ApiException as e:
+                Logger.error(f"Failed to strip finalizers from DeviceConfig {name}: {e}")
+        k8_delete_custom_resource("amd.com", "v1alpha1", "deviceconfigs", namespace, name)
+
+
+_STALE_NODE_LABEL_PREFIXES = [
+    "amd.com/remediating",
+    "metricsexporter.amd.com",
+    "gpu.operator.amd.com/",
+]
+
+_STALE_NODE_TAINT_KEYS = [
+    "amd-gpu-driver-upgrade",
+    "amd-dcm",
+]
+
+
+def k8_cleanup_stale_node_state():
+    """Remove stale labels and taints left on GPU nodes by canceled/crashed runs.
+
+    Strips operator-managed labels (remediating, metricsexporter health,
+    gpu.operator) and driver-upgrade taints that persist when the operator
+    is deleted without proper cleanup.
+    """
+    core_api = client.CoreV1Api()
+    try:
+        nodes = core_api.list_node()
+    except ApiException:
+        return
+
+    for node in nodes.items:
+        labels = node.metadata.labels or {}
+        taints = node.spec.taints or []
+        patches_needed = False
+
+        labels_to_remove = [k for k in labels
+                            if any(k.startswith(p) or k == p for p in _STALE_NODE_LABEL_PREFIXES)]
+
+        taints_to_keep = [t for t in taints if t.key not in _STALE_NODE_TAINT_KEYS]
+        taints_removed = len(taints) - len(taints_to_keep)
+
+        if not labels_to_remove and not taints_removed:
+            continue
+
+        patch_body = {}
+        if labels_to_remove:
+            Logger.info(f"Removing stale labels from {node.metadata.name}: {labels_to_remove}")
+            patch_body["metadata"] = {"labels": {k: None for k in labels_to_remove}}
+
+        if taints_removed:
+            removed_keys = [t.key for t in taints if t.key in _STALE_NODE_TAINT_KEYS]
+            Logger.info(f"Removing stale taints from {node.metadata.name}: {removed_keys}")
+            patch_body.setdefault("spec", {})["taints"] = taints_to_keep or None
+
+        try:
+            core_api.patch_node(node.metadata.name, patch_body)
+        except ApiException as e:
+            Logger.error(f"Failed to clean stale state from {node.metadata.name}: {e}")
+
 @log_arguments
 def k8_delete_cr(cr_spec, cr_file):
     """
