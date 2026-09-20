@@ -132,7 +132,7 @@ def pytest_generate_tests(metafunc):
             if not alts:
                 metafunc.parametrize('upgrade_version', [pytest.param(None, marks=pytest.mark.skip(reason="No alternative driver versions available in spec"))])
             else:
-                metafunc.parametrize('upgrade_version', alts[-3:])
+                metafunc.parametrize('upgrade_version', alts)
 
     if 'limited_upgrade_version' in metafunc.fixturenames:
         result = _get_driver_versions(metafunc)
@@ -227,8 +227,6 @@ def test_driver_upgrade_cycle(request, gpu_cluster, deviceconfig_install, enviro
     global Logger
     if environment.gpu_operator_version in ["v1.0.0", "v1.1.0"]:
         pytest.skip(f"Skipping driver-upgrade testcase for current version {environment.gpu_operator_version}")
-    if gpu_cluster.is_mini_kube():
-        pytest.skip("Using mini-kube cluster - skip driver upgrade testcases")
 
     current_version = environment.amdgpu_driver_spec["default-version"]
     _skip_if_version_violates_gpu_constraints(gpu_cluster, upgrade_version, current_version)
@@ -375,8 +373,6 @@ def test_upgrade_driver_using_label(request, gpu_cluster, environment, devicecon
     '''
     if environment.gpu_operator_version in ["v1.0.0", "v1.1.0"]:
         pytest.skip(f"Skipping driver-upgrade testcase for current version {environment.gpu_operator_version}")
-    if gpu_cluster.is_mini_kube():
-        pytest.skip("Using mini-kube cluster - skip driver upgrade testcases")
 
     current_version = environment.amdgpu_driver_spec["default-version"]
     _skip_if_version_violates_gpu_constraints(gpu_cluster, limited_upgrade_version, current_version)

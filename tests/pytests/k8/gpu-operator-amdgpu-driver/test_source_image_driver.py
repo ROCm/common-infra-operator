@@ -26,6 +26,7 @@ Validates deploying the amdgpu driver via pre-built source images
 import pytest
 import time
 import logging
+import subprocess
 import lib.k8_util as k8_util
 import lib.common as common
 import lib.spec_util as spec_util
@@ -37,6 +38,96 @@ Logger = logging.getLogger("k8.amdgpu-driver.test_source_image_driver")
 DEFAULT_SOURCE_IMAGE_REPO = "docker.io/rocm/amdgpu-driver"
 
 debug_on_failure = K8Helper.triage
+
+
+def _delete_registry_tag(registry_url, repo, tag):
+    """Delete an image tag from an insecure v2 container registry via manifest digest."""
+    # TODO: support HTTPS registries (secure or OpenShift internal) — detect scheme from URL or try HTTPS with fallback
+    try:
+        base = f"http://{registry_url}/v2/{repo}"
+        result = subprocess.run(
+            ["curl", "-sI", "-o", "/dev/null", "-w", "%{http_code}",
+             "-H", "Accept: application/vnd.docker.distribution.manifest.v2+json",
+             f"{base}/manifests/{tag}"],
+            capture_output=True, text=True, timeout=10)
+        if result.stdout.strip() != "200":
+            Logger.debug(f"Registry cleanup: tag {repo}:{tag} not found (HTTP {result.stdout.strip()})")
+            return False
+        head_result = subprocess.run(
+            ["curl", "-sI", "-H", "Accept: application/vnd.docker.distribution.manifest.v2+json",
+             f"{base}/manifests/{tag}"],
+            capture_output=True, text=True, timeout=10)
+        digest = None
+        for line in head_result.stdout.splitlines():
+            if line.lower().startswith("docker-content-digest:"):
+                digest = line.split(":", 1)[1].strip()
+                break
+        if not digest:
+            Logger.warning(f"Registry cleanup: tag {repo}:{tag} exists but no digest in HEAD response")
+            return False
+        del_result = subprocess.run(
+            ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
+             "-X", "DELETE", f"{base}/manifests/{digest}"],
+            capture_output=True, text=True, timeout=10)
+        http_code = del_result.stdout.strip()
+        if http_code.startswith("2"):
+            Logger.info(f"Registry cleanup: deleted {repo}:{tag} (digest={digest[:20]}...)")
+            return True
+        Logger.warning(f"Registry cleanup: DELETE {repo}:{tag} returned HTTP {http_code}")
+        return False
+    except Exception as e:
+        Logger.warning(f"Registry cleanup failed for {repo}:{tag}: {e}")
+        return False
+
+
+def _list_registry_tags(registry_url, repo):
+    """List all tags from an insecure v2 container registry."""
+    try:
+        result = subprocess.run(
+            ["curl", "-s", f"http://{registry_url}/v2/{repo}/tags/list"],
+            capture_output=True, text=True, timeout=10)
+        import json
+        data = json.loads(result.stdout)
+        return data.get("tags", []) or []
+    except Exception:
+        return []
+
+
+@pytest.fixture(autouse=True, scope="module")
+def cleanup_built_driver_images(skip_non_openshift, environment, images, gpu_cluster):
+    """After source-image tests complete, delete built images from the hosted
+    registry so subsequent apt-based driver tests trigger a fresh build."""
+    yield
+
+    if getattr(environment, 'deployment_mode', None) != "openshift":
+        return
+
+    driver_image = images.get('driver.image.repository', None)
+    if not driver_image:
+        Logger.debug("Registry cleanup: no driver.image.repository, skipping")
+        return
+
+    driver_image = driver_image.rstrip("/")
+    if "://" in driver_image:
+        driver_image = driver_image.split("://", 1)[1]
+
+    parts = driver_image.split("/", 1)
+    if len(parts) != 2:
+        Logger.warning(f"Registry cleanup: cannot parse registry/repo from {driver_image}")
+        return
+    registry_url, repo = parts[0], parts[1]
+
+    tags = _list_registry_tags(registry_url, repo)
+    if not tags:
+        Logger.info("Registry cleanup: no tags found in hosted registry")
+        return
+
+    deleted = 0
+    for tag in tags:
+        if _delete_registry_tag(registry_url, repo, tag):
+            deleted += 1
+
+    Logger.info(f"Registry cleanup: deleted {deleted}/{len(tags)} image tag(s) from {registry_url}/{repo}")
 
 
 @pytest.fixture(autouse=True, scope="module")
@@ -175,11 +266,12 @@ def pytest_generate_tests(metafunc):
             try:
                 with open(spec_path) as f:
                     spec = json.load(f)
-                versions = spec.get("alternative-versions", [])
+                versions = spec.get("source-image-versions",
+                                    spec.get("alternative-versions", []))
             except Exception:
                 pass
         if not versions:
-            versions = [pytest.param("none", marks=pytest.mark.skip(reason="No alternative versions in driver spec"))]
+            versions = [pytest.param("none", marks=pytest.mark.skip(reason="No source-image versions in driver spec"))]
         metafunc.parametrize("upgrade_version", versions)
 
 
