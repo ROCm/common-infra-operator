@@ -35,6 +35,16 @@ on:
         description: 'Git SHA of the triggering commit'
         required: true
         type: string
+      rocm_tarball_version:
+        description: 'Tarball version for dedup key (e.g. 10.1.0rc0). Falls back to image_tag if not provided.'
+        required: false
+        type: string
+        default: ''
+      all_builds_succeeded:
+        description: 'Set to true only when all build jobs succeeded. Prevents dedup marker on partial builds.'
+        required: false
+        type: boolean
+        default: false
       s3_bucket:
         description: 'S3 bucket name'
         required: true
@@ -88,6 +98,14 @@ on:
       s3_prefix:
         required: true
         type: string
+      rocm_tarball_version:
+        required: false
+        type: string
+        default: ''
+      all_builds_succeeded:
+        required: false
+        type: boolean
+        default: false
       trigger_sha:
         required: false
         type: string
@@ -148,10 +166,12 @@ jobs:
           for name in "${NAMES[@]}"; do
             name=$(echo "${name}" | xargs)
             echo "Downloading artifact: ${name}"
-            gh run download "${{ github.run_id }}" \
+            if ! gh run download "${{ github.run_id }}" \
               --repo "${{ github.repository }}" \
               --name "${name}" \
-              --dir artifacts
+              --dir artifacts; then
+              echo "::warning::Artifact '${name}' not found or download failed — skipping"
+            fi
           done
           echo "Downloaded artifacts:"
           ls -lh artifacts/
@@ -262,11 +282,11 @@ jobs:
         run: mkdir -p .dedup-marker && echo "ok" > .dedup-marker/ok
 
       - name: Save dedup marker to cache
-        if: always() && steps.s3-upload.outcome == 'success' && (inputs.docker_images == '' || steps.registry-push.outcome == 'success')
+        if: always() && inputs.all_builds_succeeded == true && steps.s3-upload.outcome == 'success' && (inputs.docker_images == '' || steps.registry-push.outcome == 'success')
         continue-on-error: true
         uses: actions/cache/save@v4
         with:
-          key: dedup-${{ inputs.component }}-${{ inputs.image_tag }}-${{ inputs.trigger_sha }}
+          key: dedup-${{ inputs.component }}-${{ inputs.rocm_tarball_version || inputs.image_tag }}-${{ inputs.trigger_sha }}
           path: .dedup-marker
 
       - name: Publish summary
