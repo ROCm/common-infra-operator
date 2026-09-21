@@ -43,7 +43,7 @@ on:
         type: string
         default: ''
       rocm_version:
-        description: 'ROCm version for pre-release builds (e.g. 10.1.0 for latest RC, or 10.1.0rc4 for specific RC)'
+        description: 'ROCm version for pre-release builds (e.g. 10.1.0rc4 for RC build, or 10.1.0 for GA build)'
         required: false
         type: string
         default: ''
@@ -202,9 +202,9 @@ jobs:
             SUFFIX="${IMAGE_TAG}"
             ROCM_TARBALL_VERSION="${IMAGE_TAG}"
             if [ "${TRIGGER_EVENT}" = "workflow_dispatch" ]; then
-              EXISTING=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/nightly/${DATE}/" 2>/dev/null | head -1)
+              EXISTING=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/nightly/${DATE}/" | head -1)
               if [ -n "${EXISTING}" ]; then
-                LAST_N=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/nightly/${DATE}/" 2>/dev/null \
+                LAST_N=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/nightly/${DATE}/" \
                   | grep -oP 'rebuild-\K\d+' | sort -n | tail -1 || true)
                 N=$(( ${LAST_N:-0} + 1 ))
                 S3_PREFIX="${S3_COMPONENT_PREFIX}/nightly/${DATE}/rebuild-${N}"
@@ -227,12 +227,16 @@ jobs:
             ;;
 
           pre-release)
+            if [ -z "${ROCM_VERSION}" ]; then
+              echo "::error::rocm_version input is required for pre-release builds"
+              exit 1
+            fi
             if [[ "${ROCM_VERSION}" =~ rc[0-9]+$ ]]; then
               TARBALL_URL="https://rc.repo.amd.com/rocm/core/tarball/therock-dist-linux-multiarch-${ROCM_VERSION}.tar.gz"
             else
               TARBALL_URL="https://stable.repo.amd.com/rocm/core/tarball/therock-dist-linux-multiarch-${ROCM_VERSION}.tar.gz"
             fi
-            LISTING=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/pre-release/" 2>&1) || LISTING=""
+            LISTING=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/pre-release/" 2>&1)
             LAST_N=$(echo "${LISTING}" | grep -oP "${VERSION}-${ROCM_VERSION}-\K\d+" | sort -n | tail -1 || true)
             N=$(( ${LAST_N:-0} + 1 ))
             SUFFIX="${ROCM_VERSION}-${N}"

@@ -40,6 +40,11 @@ on:
         required: false
         type: string
         default: ''
+      all_builds_succeeded:
+        description: 'Set to true only when all build jobs succeeded. Prevents dedup marker on partial builds.'
+        required: false
+        type: boolean
+        default: false
       s3_bucket:
         description: 'S3 bucket name'
         required: true
@@ -97,6 +102,10 @@ on:
         required: false
         type: string
         default: ''
+      all_builds_succeeded:
+        required: false
+        type: boolean
+        default: false
       trigger_sha:
         required: false
         type: string
@@ -160,8 +169,8 @@ jobs:
             if ! gh run download "${{ github.run_id }}" \
               --repo "${{ github.repository }}" \
               --name "${name}" \
-              --dir artifacts 2>/dev/null; then
-              echo "::warning::Artifact '${name}' not found — skipping (build job may have failed)"
+              --dir artifacts; then
+              echo "::warning::Artifact '${name}' not found or download failed — skipping"
             fi
           done
           echo "Downloaded artifacts:"
@@ -273,7 +282,7 @@ jobs:
         run: mkdir -p .dedup-marker && echo "ok" > .dedup-marker/ok
 
       - name: Save dedup marker to cache
-        if: always() && steps.s3-upload.outcome == 'success' && (inputs.docker_images == '' || steps.registry-push.outcome == 'success')
+        if: always() && inputs.all_builds_succeeded == true && steps.s3-upload.outcome == 'success' && (inputs.docker_images == '' || steps.registry-push.outcome == 'success')
         continue-on-error: true
         uses: actions/cache/save@v4
         with:

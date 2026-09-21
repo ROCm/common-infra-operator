@@ -44,6 +44,20 @@ jobs:
       DEST_PATH:  ${{ inputs.destination_path }}
       RECURSIVE:  ${{ inputs.recursive }}
     steps:
+      - name: Validate prerequisites
+        env:
+          HAS_BUCKET: ${{ vars.THEROCK_BUCKET_NAME != '' }}
+          HAS_ROLE:   ${{ secrets.ROCK_CI_S3_SECRET != '' }}
+        run: |
+          if [ "${HAS_BUCKET}" != "true" ]; then
+            echo "::error::THEROCK_BUCKET_NAME variable is not set"
+            exit 1
+          fi
+          if [ "${HAS_ROLE}" != "true" ]; then
+            echo "::error::ROCK_CI_S3_SECRET secret is not set"
+            exit 1
+          fi
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -55,12 +69,12 @@ jobs:
         run: |
           set -euo pipefail
           if [ "${RECURSIVE}" = "true" ]; then
-            OUTPUT=$(aws s3 rm "s3://${S3_BUCKET}/${S3_PATH}" --recursive 2>&1)
-            if [ -z "${OUTPUT}" ]; then
+            TMPFILE=$(mktemp)
+            aws s3 rm "s3://${S3_BUCKET}/${S3_PATH}" --recursive | tee "${TMPFILE}"
+            if [ ! -s "${TMPFILE}" ]; then
               echo "::error::No objects found at s3://${S3_BUCKET}/${S3_PATH}"
               exit 1
             fi
-            echo "${OUTPUT}"
           else
             if ! aws s3 ls "s3://${S3_BUCKET}/${S3_PATH}" > /dev/null 2>&1; then
               echo "::error::Not found: s3://${S3_BUCKET}/${S3_PATH}"
@@ -79,13 +93,13 @@ jobs:
             exit 1
           fi
           if [ "${RECURSIVE}" = "true" ]; then
-            OUTPUT=$(aws s3 cp "s3://${S3_BUCKET}/${S3_PATH}" "s3://${S3_BUCKET}/${DEST_PATH}" \
-              --recursive --no-progress 2>&1)
-            if [ -z "${OUTPUT}" ]; then
+            TMPFILE=$(mktemp)
+            aws s3 cp "s3://${S3_BUCKET}/${S3_PATH}" "s3://${S3_BUCKET}/${DEST_PATH}" \
+              --recursive --no-progress | tee "${TMPFILE}"
+            if [ ! -s "${TMPFILE}" ]; then
               echo "::error::No objects found at s3://${S3_BUCKET}/${S3_PATH}"
               exit 1
             fi
-            echo "${OUTPUT}"
             aws s3 rm "s3://${S3_BUCKET}/${S3_PATH}" --recursive
           else
             aws s3 cp "s3://${S3_BUCKET}/${S3_PATH}" "s3://${S3_BUCKET}/${DEST_PATH}" --no-progress
