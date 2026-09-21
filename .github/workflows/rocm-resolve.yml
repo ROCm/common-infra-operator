@@ -17,9 +17,10 @@ on:
         required: true
         type: string
       tarball_url_default:
-        description: 'Default tarball URL (used as fallback for PR and dispatch triggers)'
-        required: true
+        description: 'Tarball URL for pull_request builds'
+        required: false
         type: string
+        default: ''
       s3_component_prefix:
         description: 'S3 path prefix (e.g. device-metrics-exporter, device-config-manager)'
         required: true
@@ -29,7 +30,7 @@ on:
         required: true
         type: string
       trigger_event:
-        description: 'Trigger event name (schedule, pull_request, workflow_dispatch)'
+        description: 'Trigger event name (schedule, pull_request, workflow_dispatch, pre-release)'
         required: true
         type: string
       trigger_sha:
@@ -37,7 +38,12 @@ on:
         required: true
         type: string
       input_tarball_url:
-        description: 'User-provided tarball URL (workflow_dispatch). Empty = auto-detect.'
+        description: 'Tarball URL for dispatch builds'
+        required: false
+        type: string
+        default: ''
+      rocm_version:
+        description: 'ROCm version for pre-release builds (e.g. 10.1.0 for latest RC, or 10.1.0rc4 for specific RC)'
         required: false
         type: string
         default: ''
@@ -61,6 +67,9 @@ on:
       image_tag:
         description: 'Image tag derived from tarball'
         value: ${{ jobs.resolve.outputs.image_tag }}
+      rocm_tarball_version:
+        description: 'Tarball version for dedup (e.g. 10.1.0rc0, 10.1.0a20260918)'
+        value: ${{ jobs.resolve.outputs.rocm_tarball_version }}
       s3_prefix:
         description: 'Full S3 prefix path for uploads'
         value: ${{ jobs.resolve.outputs.s3_prefix }}
@@ -100,13 +109,14 @@ on:
         required: true
         type: string
       trigger_event:
-        description: 'Simulated trigger event (schedule, pull_request, workflow_dispatch)'
+        description: 'Simulated trigger event (schedule, pull_request, workflow_dispatch, pre-release)'
         required: true
         type: choice
         options:
           - schedule
           - pull_request
           - workflow_dispatch
+          - pre-release
       trigger_sha:
         description: 'Simulated SHA'
         required: false
@@ -141,16 +151,17 @@ jobs:
     name: Resolve tarball + image tag
     runs-on: ubuntu-24.04
     outputs:
-      rocm_tarball_url: ${{ steps.resolve.outputs.rocm_tarball_url }}
-      image_tag: ${{ steps.resolve.outputs.image_tag }}
-      s3_prefix: ${{ steps.resolve.outputs.s3_prefix }}
-      version: ${{ steps.resolve.outputs.version }}
-      suffix: ${{ steps.resolve.outputs.suffix }}
-      scenario: ${{ steps.resolve.outputs.scenario }}
-      build_needed: ${{ steps.dedup.outputs.cache-hit != 'true' || inputs.force_rebuild == true }}
+      rocm_tarball_url:     ${{ steps.resolve.outputs.rocm_tarball_url }}
+      image_tag:            ${{ steps.resolve.outputs.image_tag }}
+      rocm_tarball_version: ${{ steps.resolve.outputs.rocm_tarball_version }}
+      s3_prefix:            ${{ steps.resolve.outputs.s3_prefix }}
+      version:              ${{ steps.resolve.outputs.version }}
+      suffix:               ${{ steps.resolve.outputs.suffix }}
+      scenario:             ${{ steps.resolve.outputs.scenario }}
+      build_needed:         ${{ steps.dedup.outputs.cache-hit != 'true' || inputs.force_rebuild == true }}
     steps:
       - name: Configure AWS credentials for dispatch counter
-        if: inputs.trigger_event == 'workflow_dispatch'
+        if: inputs.trigger_event == 'workflow_dispatch' || inputs.trigger_event == 'pre-release'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.ROCK_CI_S3_SECRET }}
@@ -166,13 +177,13 @@ jobs:
           TRIGGER_EVENT: ${{ inputs.trigger_event }}
           TRIGGER_SHA: ${{ inputs.trigger_sha }}
           INPUT_URL: ${{ inputs.input_tarball_url }}
-          INPUT_IMAGE_TAG: ${{ inputs.input_image_tag }}
+          ROCM_VERSION: ${{ inputs.rocm_version }}
         run: |
           set -euo pipefail
           NIGHTLY_CDN_BASE="https://nightly.repo.amd.com/rocm/core/tarball"
 
           case "${TRIGGER_EVENT}" in
-          schedule)
+          schedule|workflow_dispatch)
             TARBALL_NAME=$(
               curl -fsSL "${NIGHTLY_CDN_BASE}/" 2>/dev/null \
               | grep -oP 'therock-dist-linux-multiarch-\d+\.\d+\.\d+a\d{8}\.tar\.gz' \
@@ -189,7 +200,20 @@ jobs:
               | sed 's/therock-dist-linux-multiarch-//;s/\.tar\.gz//')
             DATE=$(echo "${IMAGE_TAG}" | grep -oP '(?<=a)\d{8}')
             SUFFIX="${IMAGE_TAG}"
-            S3_PREFIX="${S3_COMPONENT_PREFIX}/nightly/${DATE}"
+            ROCM_TARBALL_VERSION="${IMAGE_TAG}"
+            if [ "${TRIGGER_EVENT}" = "workflow_dispatch" ]; then
+              EXISTING=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/nightly/${DATE}/" 2>/dev/null | head -1)
+              if [ -n "${EXISTING}" ]; then
+                LAST_N=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/nightly/${DATE}/" 2>/dev/null \
+                  | grep -oP 'rebuild-\K\d+' | sort -n | tail -1 || true)
+                N=$(( ${LAST_N:-0} + 1 ))
+                S3_PREFIX="${S3_COMPONENT_PREFIX}/nightly/${DATE}/rebuild-${N}"
+              else
+                S3_PREFIX="${S3_COMPONENT_PREFIX}/nightly/${DATE}"
+              fi
+            else
+              S3_PREFIX="${S3_COMPONENT_PREFIX}/nightly/${DATE}"
+            fi
             SCENARIO="nightly"
             ;;
 
@@ -197,22 +221,24 @@ jobs:
             TARBALL_URL="${INPUT_URL:-${TARBALL_URL_DEFAULT}}"
             IMAGE_TAG="${VERSION}"
             SUFFIX=$(echo "${TRIGGER_SHA}" | cut -c1-8)
+            ROCM_TARBALL_VERSION="${VERSION}"
             S3_PREFIX=""
             SCENARIO="pull_request"
             ;;
 
-          workflow_dispatch)
-            TARBALL_URL="${INPUT_URL:-${TARBALL_URL_DEFAULT}}"
-            BASENAME=$(basename "${TARBALL_URL}" .tar.gz)
-            IMAGE_TAG="${INPUT_IMAGE_TAG:-${BASENAME#therock-dist-linux-multiarch-}}"
-
-            if ! LISTING=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/pre-release/" 2>&1); then
-              echo "::error::Failed to query S3 for build counter: ${LISTING}"
-              exit 1
+          pre-release)
+            if [[ "${ROCM_VERSION}" =~ rc[0-9]+$ ]]; then
+              TARBALL_URL="https://rc.repo.amd.com/rocm/core/tarball/therock-dist-linux-multiarch-${ROCM_VERSION}.tar.gz"
+            else
+              TARBALL_URL="https://stable.repo.amd.com/rocm/core/tarball/therock-dist-linux-multiarch-${ROCM_VERSION}.tar.gz"
             fi
-            LAST_N=$(echo "${LISTING}" | grep -oP "${VERSION}-\K\d+" | sort -n | tail -1 || true)
-            SUFFIX=$(( ${LAST_N:-0} + 1 ))
-            S3_PREFIX="${S3_COMPONENT_PREFIX}/pre-release/${VERSION}-${SUFFIX}"
+            LISTING=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/pre-release/" 2>&1) || LISTING=""
+            LAST_N=$(echo "${LISTING}" | grep -oP "${VERSION}-${ROCM_VERSION}-\K\d+" | sort -n | tail -1 || true)
+            N=$(( ${LAST_N:-0} + 1 ))
+            SUFFIX="${ROCM_VERSION}-${N}"
+            IMAGE_TAG="${VERSION}-${SUFFIX}"
+            ROCM_TARBALL_VERSION="${ROCM_VERSION}"
+            S3_PREFIX="${S3_COMPONENT_PREFIX}/pre-release/${IMAGE_TAG}"
             SCENARIO="pre-release"
             ;;
 
@@ -229,12 +255,13 @@ jobs:
             fi
           done
 
-          echo "rocm_tarball_url=${TARBALL_URL}" >> "$GITHUB_OUTPUT"
-          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
-          echo "s3_prefix=${S3_PREFIX}" >> "$GITHUB_OUTPUT"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "suffix=${SUFFIX}" >> "$GITHUB_OUTPUT"
-          echo "scenario=${SCENARIO}" >> "$GITHUB_OUTPUT"
+          echo "rocm_tarball_url=${TARBALL_URL}"           >> "$GITHUB_OUTPUT"
+          echo "image_tag=${IMAGE_TAG}"                   >> "$GITHUB_OUTPUT"
+          echo "rocm_tarball_version=${ROCM_TARBALL_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "s3_prefix=${S3_PREFIX}"                   >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}"                       >> "$GITHUB_OUTPUT"
+          echo "suffix=${SUFFIX}"                         >> "$GITHUB_OUTPUT"
+          echo "scenario=${SCENARIO}"                     >> "$GITHUB_OUTPUT"
 
           echo "::notice::Component: ${COMPONENT}"
           echo "::notice::ROCm tarball: ${TARBALL_URL}"
@@ -250,7 +277,7 @@ jobs:
         continue-on-error: true
         uses: actions/cache/restore@v4
         with:
-          key: dedup-${{ inputs.component }}-${{ steps.resolve.outputs.image_tag }}-${{ inputs.trigger_sha }}
+          key: dedup-${{ inputs.component }}-${{ steps.resolve.outputs.rocm_tarball_version }}-${{ inputs.trigger_sha }}
           path: .dedup-marker
           lookup-only: true
 

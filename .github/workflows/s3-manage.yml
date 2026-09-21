@@ -1,0 +1,108 @@
+name: S3 Artifact Management
+
+# Manage artifacts in the shared S3 bucket.
+# Operations: delete (single file or folder) and move (rename or relocate).
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Operation to perform'
+        required: true
+        type: choice
+        options:
+          - delete
+          - move
+      s3_path:
+        description: "Path from bucket root (e.g. <component>/<scenario>/<version>/ or <component>/<scenario>/<version>/<file>.tar.gz)"
+        required: true
+        type: string
+      recursive:
+        description: 'Check for folder/prefix. Uncheck for single file.'
+        required: false
+        type: boolean
+        default: false
+      destination_path:
+        description: "Destination path for move (e.g. <component>/<scenario>/<version>/)"
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+
+  manage:
+    name: ${{ inputs.operation }} — ${{ inputs.s3_path }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      S3_BUCKET:  ${{ vars.THEROCK_BUCKET_NAME }}
+      S3_PATH:    ${{ inputs.s3_path }}
+      DEST_PATH:  ${{ inputs.destination_path }}
+      RECURSIVE:  ${{ inputs.recursive }}
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.ROCK_CI_S3_SECRET }}
+          aws-region: us-east-1
+
+      - name: Delete
+        if: inputs.operation == 'delete'
+        run: |
+          set -euo pipefail
+          if [ "${RECURSIVE}" = "true" ]; then
+            OUTPUT=$(aws s3 rm "s3://${S3_BUCKET}/${S3_PATH}" --recursive 2>&1)
+            if [ -z "${OUTPUT}" ]; then
+              echo "::error::No objects found at s3://${S3_BUCKET}/${S3_PATH}"
+              exit 1
+            fi
+            echo "${OUTPUT}"
+          else
+            if ! aws s3 ls "s3://${S3_BUCKET}/${S3_PATH}" > /dev/null 2>&1; then
+              echo "::error::Not found: s3://${S3_BUCKET}/${S3_PATH}"
+              exit 1
+            fi
+            aws s3 rm "s3://${S3_BUCKET}/${S3_PATH}"
+            echo "Deleted: s3://${S3_BUCKET}/${S3_PATH}"
+          fi
+
+      - name: Move
+        if: inputs.operation == 'move'
+        run: |
+          set -euo pipefail
+          if [ -z "${DEST_PATH}" ]; then
+            echo "::error::destination_path is required for move"
+            exit 1
+          fi
+          if [ "${RECURSIVE}" = "true" ]; then
+            OUTPUT=$(aws s3 cp "s3://${S3_BUCKET}/${S3_PATH}" "s3://${S3_BUCKET}/${DEST_PATH}" \
+              --recursive --no-progress 2>&1)
+            if [ -z "${OUTPUT}" ]; then
+              echo "::error::No objects found at s3://${S3_BUCKET}/${S3_PATH}"
+              exit 1
+            fi
+            echo "${OUTPUT}"
+            aws s3 rm "s3://${S3_BUCKET}/${S3_PATH}" --recursive
+          else
+            aws s3 cp "s3://${S3_BUCKET}/${S3_PATH}" "s3://${S3_BUCKET}/${DEST_PATH}" --no-progress
+            aws s3 rm "s3://${S3_BUCKET}/${S3_PATH}"
+            echo "Moved: s3://${S3_BUCKET}/${S3_PATH} → s3://${S3_BUCKET}/${DEST_PATH}"
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## S3 ${{ inputs.operation }} — \`${S3_PATH}\`"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Bucket | \`${S3_BUCKET}\` |"
+            echo "| Source | \`${S3_PATH}\` |"
+            echo "| Recursive | ${RECURSIVE} |"
+            [ -n "${DEST_PATH}" ] && echo "| Destination | \`${DEST_PATH}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
