@@ -1,0 +1,38 @@
+# Build output
+/bin/
+*.out
+*.tgz
+
+# Go
+vendor/
+*.test
+*.coverprofile
+coverage.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+dist/
+build/
+*.log
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# CI / internal (not for public repo)
+.job.yml
+box.rb
+entrypoint.sh
+ci-internal/
+docs-internal/
+tests/jobs/
+dev.env
+branch_policy.yml

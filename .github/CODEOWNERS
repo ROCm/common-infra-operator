@@ -1,0 +1,6 @@
+# Default owners for everything
+* @ROCm/gpu-operator
+
+# Documentation
+*.md @ROCm/gpu-operator @ROCm/rocm-documentation
+*.rst @ROCm/gpu-operator @ROCm/rocm-documentation
