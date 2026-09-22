@@ -236,7 +236,7 @@ jobs:
             else
               TARBALL_URL="https://stable.repo.amd.com/rocm/core/tarball/therock-dist-linux-multiarch-${ROCM_VERSION}.tar.gz"
             fi
-            LISTING=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/pre-release/" 2>&1)
+            LISTING=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/pre-release/" || true)
             LAST_N=$(echo "${LISTING}" | grep -oP "${VERSION}-${ROCM_VERSION}-\K\d+" | sort -n | tail -1 || true)
             N=$(( ${LAST_N:-0} + 1 ))
             SUFFIX="${ROCM_VERSION}-${N}"
