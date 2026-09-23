@@ -31,8 +31,17 @@ build/
 .job.yml
 box.rb
 entrypoint.sh
-ci-internal/
+ci-internal/*
+!ci-internal/gen_image_manifest.py
+!ci-internal/README.md
+!ci-internal/baselines/
+!ci-internal/baselines/**
+!ci-internal/*.yaml
 docs-internal/
 tests/jobs/
 dev.env
 branch_policy.yml
+
+# Generated test artifacts
+tests/pytests/images.yaml
+tests/pytests/downloads/

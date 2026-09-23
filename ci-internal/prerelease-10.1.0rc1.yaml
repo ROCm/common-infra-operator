@@ -1,0 +1,14 @@
+# Pre-release DME + DCM scenario config for ROCm 10.1.0rc1
+#
+# Usage:
+#   python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0rc1.yaml
+#
+baseline: baselines/baseline-v1.5.1.yaml
+mode: pre-release
+target: k8
+
+overrides:
+  dme:
+    image_tag: v1.5.3-10.1.0rc1-1
+  dcm:
+    image_tag: v1.5.3-10.1.0rc1-1

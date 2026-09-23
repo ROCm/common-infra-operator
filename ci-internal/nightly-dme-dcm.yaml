@@ -1,0 +1,17 @@
+# Nightly DME + DCM scenario config
+#
+# Usage:
+#   python3 ci-internal/gen_image_manifest.py ci-internal/nightly-dme-dcm.yaml
+#   python3 ci-internal/gen_image_manifest.py ci-internal/nightly-dme-dcm.yaml --date 20260923
+#
+baseline: baselines/baseline-v1.5.1.yaml
+mode: nightly
+target: k8
+rocm_version: "10.2.0"
+# date: "20260923"  # optional, defaults to today
+
+overrides:
+  dme:
+    version: v1.5.3
+  dcm:
+    version: v1.5.3
