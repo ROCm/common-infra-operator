@@ -347,6 +347,12 @@ def transform_image_info():
             rocm_ver = value.get('rocm_version')
             if rocm_ver:
                 version_str = f"{version_str} (ROCm {rocm_ver})"
+            rvs_ver = value.get('rvs_version')
+            if rvs_ver:
+                version_str = f"{version_str} (RVS {rvs_ver})"
+            agfhc_ver = value.get('agfhc_version')
+            if agfhc_ver:
+                version_str = f"{version_str} (AGFHC {agfhc_ver})"
             row = html.tr([
                   html.td(key, scope="col", style=cell_style),
                   html.td(value.get('repository', 'N/A'), scope="col", style=cell_style),

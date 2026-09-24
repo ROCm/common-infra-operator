@@ -254,6 +254,11 @@ def test_source_image_driver_deploy(gpu_cluster, deviceconfig_install, environme
                              f"Metric {metric} not found in DME output from {node_hostname}")
         Logger.info(f"Node {node_hostname}: DME metrics endpoint healthy, key metrics present")
 
+    # Verify driver version via deviceconfig CR, KMM node label, dmesg, and amd-smi
+    driver_version = amdgpu.get_matching_driver_version(deviceconfig_install.driver_version)
+    K8Helper.check_deviceconfig_driver_version(gpu_cluster, deviceconfig_install.driver_version, environment)
+    K8Helper.check_node_driver_version(gpu_cluster, deviceconfig_install.driver_version, driver_version, environment)
+
     Logger.info(f"Source image driver deploy verified: driver={deviceconfig_install.driver_version}")
 
 

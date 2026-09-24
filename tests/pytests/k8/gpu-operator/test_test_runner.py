@@ -161,6 +161,29 @@ def deviceconfig_install(gpu_cluster, images, gpu_operator_install, environment)
         K8Helper.wait_kmm_worker_completion(environment, devcfg)
     K8Helper.update_node_driver_version(gpu_cluster, environment)
 
+    exporter_pods = [
+        common.PodInfo('metrics-exporter', len(gpu_nodes), 1),
+    ]
+    failed_exporter_pods = k8_util.k8_check_pod_running(environment.gpu_operator_namespace, exporter_pods)
+    if not failed_exporter_pods:
+        K8Helper.capture_rocm_version(
+            environment.gpu_operator_namespace,
+            "metrics-exporter",
+            [("metricsExporter.image", "metrics-exporter-container")],
+        )
+
+    testrunner_pods = [
+        common.PodInfo('test-runner', len(gpu_nodes), 1),
+    ]
+    failed_testrunner_pods = k8_util.k8_check_pod_running(environment.gpu_operator_namespace, testrunner_pods)
+    if not failed_testrunner_pods:
+        K8Helper.capture_testrunner_versions(
+            environment.gpu_operator_namespace,
+            "RVS",
+            "testRunner.image",
+            timeout_seconds=30,
+        )
+
     devcfg_info = DeviceConfigCRInfo()
     setattr(devcfg_info, "test_cfg_map", test_cfg_map)
     setattr(devcfg_info, "exporter_port_map", exporter_port_map)
@@ -312,12 +335,13 @@ def verify_gpu_capacity_status(environment, worker, gpus):
     i = 0
     while i < 10:
         cap, alloc = k8_util.k8_get_node_gpu_capacity(worker)
+        Logger.info(f"GPU capacity check: {worker} capacity={cap} allocatable={alloc} (expect cap == alloc + {gpus})")
         if cap == alloc + gpus:
             return
         time.sleep(10)
         i = i + 1
-    debug_on_failure(environment, True,
-                     f"capacity = allocatable + unavailable_gpus: {cap} != {alloc} + {gpus}")
+    debug_on_failure(environment, False,
+                     f"GPU capacity mismatch after 100s: {worker} capacity={cap} allocatable={alloc} (expected alloc + {gpus} = {cap})")
 
 
 def update_metrics_exporter_configmap(config_map):
@@ -456,6 +480,12 @@ def update_test_runner_image(deviceconfig_install, environment, framework, confi
         ret_code, ret_stdout, ret_stderr = k8_util.k8_modify_deviceconfig_cr(cr_spec)
         debug_on_failure(environment, (ret_code == 0), "Failed to modify deviceconfig CR")
 
+    if framework == "AGFHC" and f"testRunnerAgfhc.image.agfhc_version" not in getattr(pytest, "_image_info", {}):
+        K8Helper.capture_testrunner_versions(
+            environment.gpu_operator_namespace,
+            "AGFHC",
+            "testRunnerAgfhc.image",
+        )
 
 
 def swap_recipe(request, gpu_cluster, deviceconfig_install, environment, framework, trigger="AUTO_UNHEALTHY_GPU_WATCH"):
@@ -1288,6 +1318,19 @@ def test_pre_job(request, gpu_cluster, deviceconfig_install, environment, images
                      f"didn't find pytorch-gpu-deployment in {deployment.status.conditions}")
 
     time.sleep(300)
+    try:
+        ret_code, init_logs, _ = k8_util.k8_get_pod_logs(
+            'pytorch-gpu-deployment', namespace, since="600s", container='init-test-runner')
+        if init_logs:
+            Logger.info(f"init-test-runner logs ({len(init_logs)} chars):\n{init_logs[-3000:]}")
+        ret_code_prev, prev_logs, _ = k8_util.k8_get_pod_logs(
+            'pytorch-gpu-deployment', namespace, since="600s",
+            container='init-test-runner', previous=True)
+        if prev_logs:
+            Logger.info(f"init-test-runner PREVIOUS logs ({len(prev_logs)} chars):\n{prev_logs[-3000:]}")
+    except Exception as e:
+        Logger.warning(f"Failed to collect init-test-runner diagnostics: {e}")
+
     match = [f'Starting iteration 1 of 1 for test: {recipe}', 'completed successfully', f'Trigger: {trigger} Test: {recipe}']
     verify_logs(environment, match, 'pytorch-gpu-deployment', container='init-test-runner')
 
