@@ -411,11 +411,11 @@ class K8Helper:
             Logger.debug(f"Cmd:{cmd}, Response:\n{LogPrettyPrinter.pformat(resp_stdout)}")
             amdgpu_lines = list(filter(lambda line: 'amdgpu version' in line, resp_stdout.split("\n")))
             K8Helper.triage(environment, len(amdgpu_lines) > 0, "No dmesg-lines with 'amdgpu version' information")
+            K8Helper.triage(environment, rocm_version is not None,
+                            f"No amdgpu-driver-version mapping for config version {config_version} in gpu-operator-rocm-info.json")
             if rocm_version:
                 matching_lines = [line for line in amdgpu_lines if rocm_version in line]
                 K8Helper.triage(environment, len(matching_lines) > 0, f"can't find {rocm_version} in {amdgpu_lines}")
-            else:
-                Logger.warning(f"No known amdgpu driver version for config version {config_version}, skipping dmesg version check")
 
             # Verify driver version via amd-smi from metrics-exporter pod
             exporter_pod_name = k8_util.k8_get_pod_name("metrics-exporter", environment.gpu_operator_namespace, node_name)
@@ -438,9 +438,6 @@ class K8Helper:
             if rocm_version:
                 K8Helper.triage(environment, smi_driver_version == rocm_version,
                                 f"Driver version mismatch on {node_name}: amd-smi reports {smi_driver_version}, expected {rocm_version}")
-            else:
-                K8Helper.triage(environment, len(smi_driver_version) > 0,
-                                f"amd-smi returned empty driver version on {node_name}")
 
     @staticmethod
     def update_test_runner_configmap(recipe, worker, config_map=dict(), framework="RVS", trigger="AUTO_UNHEALTHY_GPU_WATCH"):
@@ -579,7 +576,10 @@ class K8Helper:
                             f'Err getting gpu capacity and allocatable values: capacity: {init_cap} allocatable: {init_alloc}')
 
             # check if the node has allocatable gpus; if not fail
-            K8Helper.triage(environment, init_cap != 0 or init_alloc != 0, f'no gpu available')
+            num_gpu_reqd = workload_config.get('num_gpu_reqd', 1)
+            Logger.info(f"GPU state before workload: node={node_name} capacity={init_cap} allocatable={init_alloc} requested={num_gpu_reqd}")
+            K8Helper.triage(environment, init_cap != 0 or init_alloc != 0,
+                            f'no gpu available (capacity={init_cap}, allocatable={init_alloc}, node={node_name})')
 
             # create a workload requesting one gpu
             pod_name = f"gpu-workload-{node_name}-{common.generate_8byte_sha(node_name)}"
@@ -626,10 +626,24 @@ class K8Helper:
                 if workload_config['podStatus'] == K8Helper.PodStatus.FAILED:
                     Logger.warn(f"Workload pod failed after {elapsed}s")
                     break
+                if elapsed >= 60 and workload_config['podStatus'] == K8Helper.PodStatus.PENDING:
+                    cap, alloc = k8_util.k8_get_node_gpu_capacity(node_name)
+                    if int(alloc) < int(num_gpu_reqd):
+                        Logger.error(
+                            f"Bailing early: pod {workload_config.get('pod_name', '?')} needs "
+                            f"{num_gpu_reqd} GPUs but node {node_name} has only {alloc} allocatable "
+                            f"(capacity={cap}) after {elapsed}s")
+                        break
                 time.sleep(poll_interval)
                 elapsed += poll_interval
                 if elapsed % 120 == 0:
                     Logger.info(f"Waiting for workload pod ({elapsed}s/{max_wait}s)...")
+            if workload_config['podStatus'] != expected_status:
+                cap, alloc = k8_util.k8_get_node_gpu_capacity(node_name)
+                Logger.error(
+                    f"Workload pod {workload_config.get('pod_name', '?')} did not reach "
+                    f"{expected_status.name} after {elapsed}s (status={workload_config['podStatus'].name}, "
+                    f"GPU capacity={cap}, allocatable={alloc})")
             workload_config['spec'] = cr_spec
             return workload_config
         elif op_code == K8Helper.WorkloadOp.STOP_WORKLOAD:
@@ -1040,4 +1054,73 @@ class K8Helper:
                     Logger.warning(f"ROCm version not found in LD_LIBRARY_PATH for {container_name} ({pod_name}): rc={rc} err={err}")
             except Exception as e:
                 Logger.warning(f"capture_rocm_version: exec failed for {container_name} ({pod_name}): {e}")
+
+    @staticmethod
+    def capture_testrunner_versions(namespace: str, framework: str, image_key: str, timeout_seconds: int = 120) -> None:
+        """
+        Capture ROCm version and the framework-specific tool version (RVS or AGFHC)
+        from the running test-runner pod and store them in pytest._image_info for
+        HTML and JSON reporting.
+
+        Args:
+            namespace:       Kubernetes namespace where the test-runner pod runs.
+            framework:       "RVS" or "AGFHC".
+            image_key:       Image key prefix stored in _image_info, e.g.
+                             "testRunner.image" or "testRunnerAgfhc.image".
+            timeout_seconds: How long to wait for a Running pod with the expected tool.
+        """
+        if not hasattr(pytest, "_image_info"):
+            return
+
+        if framework == "RVS":
+            tool_cmd = ["/opt/rocm/bin/rvs", "--version"]
+            tool_key = f"{image_key}.rvs_version"
+            tool_pattern = r'(\d+\.\d+\.\d+)'
+        elif framework == "AGFHC":
+            tool_cmd = ["/opt/amd/agfhc/agfhc", "--version"]
+            tool_key = f"{image_key}.agfhc_version"
+            tool_pattern = r'agfhc version:\s*(\S+)'
+        else:
+            Logger.warning(f"capture_testrunner_versions: unknown framework '{framework}'")
+            return
+
+        deadline = time.time() + timeout_seconds
+        while time.time() < deadline:
+            try:
+                pod_name = k8_util.k8_get_pod_name("test-runner", namespace)
+            except Exception as e:
+                Logger.warning(f"capture_testrunner_versions: failed to list pods: {e}")
+                time.sleep(5)
+                continue
+
+            if not pod_name:
+                time.sleep(5)
+                continue
+
+            try:
+                rc, out, _ = k8_util.exec_command_in_pod(namespace, ["printenv", "LD_LIBRARY_PATH"], pod_name)
+                if rc == 0 and out:
+                    m = re.search(r'/opt/rocm-([^/:]+)/', out)
+                    if m:
+                        pytest._image_info[f"{image_key}.rocm_version"] = m.group(1)
+            except Exception:
+                pass
+
+            try:
+                rc, out, _ = k8_util.exec_command_in_pod(namespace, tool_cmd, pod_name)
+                if rc == 0 and out:
+                    m = re.search(tool_pattern, out)
+                    if m:
+                        pytest._image_info[tool_key] = m.group(1)
+                        Logger.info(f"{framework} tool version: {m.group(1)}")
+                        return
+            except Exception:
+                pass
+
+            time.sleep(5)
+
+        Logger.warning(
+            f"capture_testrunner_versions: timed out after {timeout_seconds}s "
+            f"waiting for {framework} version from test-runner pod"
+        )
 

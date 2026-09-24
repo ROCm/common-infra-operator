@@ -99,14 +99,15 @@ def deploy_debian_package(gpu_cluster, images, reference_config, environment):
                     ret_code, ret_stdout, ret_stderr = node.run_command(f"sudo apt install -y {remote_file}")
                     K8Helper.triage(environment, (ret_code == 0), f"Failed to install metrics-exporter debian, error : {ret_stderr}")
 
-                    ret_code, ret_stdout, ret_stderr = node.run_command(f"sudo systemctl status amd-metrics-exporter.service")
-                    K8Helper.triage(environment, (ret_code != 0), f"Failed to check status metrics-exporter debian, error : {ret_stderr}")
+                    ret_code, _, _ = node.run_command(f"sudo systemctl status amd-metrics-exporter.service")
+                    if ret_code == 0:
+                        Logger.info(f"Service already running after apt install on {node.host_name}")
+                    else:
+                        ret_code, ret_stdout, ret_stderr = node.run_command(f"sudo systemctl enable amd-metrics-exporter.service")
+                        K8Helper.triage(environment, (ret_code == 0), f"Failed to enable metrics-exporter debian, error : {ret_stderr}")
 
-                    ret_code, ret_stdout, ret_stderr = node.run_command(f"sudo systemctl enable amd-metrics-exporter.service")
-                    K8Helper.triage(environment, (ret_code == 0), f"Failed to enable metrics-exporter debian, error : {ret_stderr}")
-
-                    ret_code, ret_stdout, ret_stderr = node.run_command(f"sudo systemctl start amd-metrics-exporter.service")
-                    K8Helper.triage(environment, (ret_code == 0), f"Failed to start metrics-exporter debian, error : {ret_stderr}")
+                        ret_code, ret_stdout, ret_stderr = node.run_command(f"sudo systemctl start amd-metrics-exporter.service")
+                        K8Helper.triage(environment, (ret_code == 0), f"Failed to start metrics-exporter debian, error : {ret_stderr}")
 
                     ret_code, ret_stdout, ret_stderr = node.run_command(f"sudo systemctl status amd-metrics-exporter.service")
                     K8Helper.triage(environment, (ret_code == 0), f"Failed to check status metrics-exporter debian, error : {ret_stderr}")

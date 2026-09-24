@@ -508,7 +508,6 @@ def k8_cleanup_stale_node_state():
     for node in nodes.items:
         labels = node.metadata.labels or {}
         taints = node.spec.taints or []
-        patches_needed = False
 
         labels_to_remove = [k for k in labels
                             if any(k.startswith(p) or k == p for p in _STALE_NODE_LABEL_PREFIXES)]
@@ -1766,8 +1765,11 @@ def k8_get_pod_name(pod_str : str, namespace : str, node_name : str = None):
             return pod['metadata']['name']
 
 @log_arguments
-def k8_get_container_logs(pod_str, namespace, container):
+def k8_get_container_logs(pod_str, namespace, container, previous=False):
     pod_name = k8_get_pod_name(pod_str, namespace)
+    if pod_name is None:
+        Logger.error(f"Pod matching '{pod_str}' not found in namespace '{namespace}', cannot get container logs")
+        return ""
     api = client.CoreV1Api()
     logs = ""
 
@@ -1775,11 +1777,12 @@ def k8_get_container_logs(pod_str, namespace, container):
         logs = api.read_namespaced_pod_log(
             name=pod_name,
             namespace=namespace,
-            container=container
+            container=container,
+            previous=previous
         )
     except client.ApiException as e:
         Logger.error(f"Error getting container logs: {e}")
-    return logs
+    return logs or ""
 
 @log_arguments
 def k8_get_pod_logs(pod_str : str, namespace : str, since="180s", container = None, previous=False):
@@ -1797,7 +1800,7 @@ def k8_get_pod_logs(pod_str : str, namespace : str, since="180s", container = No
         tuple: (ret_code, logs, error_message)
     """
     if container != None:
-        logs = k8_get_container_logs(pod_str, namespace, container)
+        logs = k8_get_container_logs(pod_str, namespace, container, previous=previous)
         return 0, logs, ""
 
     pod_name = k8_get_pod_name(pod_str, namespace)
