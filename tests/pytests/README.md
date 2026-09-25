@@ -48,8 +48,8 @@ python3 ci-internal/gen_image_manifest.py ci-internal/nightly-dme-dcm.yaml
 python3 ci-internal/gen_image_manifest.py ci-internal/nightly-dme-dcm.yaml \
     --date 20260923 --target standalone
 
-# Pre-release — DME + DCM against ROCm 10.1.0rc1
-python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0rc1.yaml
+# Pre-release — DME + DCM against ROCm 10.1.0 (auto-detects latest RC)
+python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0.yaml
 ```
 
 See `ci-internal/README.md` for the full manifest generator documentation.
@@ -277,7 +277,7 @@ ServiceMonitor, pod/service annotations, and metrics endpoint.
 
 ```bash
 # Generate manifest with the DME build to validate
-python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0rc1.yaml
+python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0.yaml
 
 cd tests/pytests
 ./k8_test_launcher.sh \
@@ -342,7 +342,7 @@ Test cases in `test_test_runner.py`:
 #### DME Standalone — debian package
 
 ```bash
-python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0rc1.yaml \
+python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0.yaml \
     --target standalone
 
 cd tests/pytests
@@ -369,7 +369,7 @@ Validates DCM deployment, GPU partitioning (CDNA only), and config
 lifecycle.
 
 ```bash
-python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0rc1.yaml
+python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0.yaml
 
 cd tests/pytests
 ./k8_test_launcher.sh \
