@@ -19,8 +19,8 @@ python3 ci-internal/gen_image_manifest.py ci-internal/nightly-dme-dcm.yaml --dat
 # Nightly — override target to standalone (downloads debs instead of helm charts)
 python3 ci-internal/gen_image_manifest.py ci-internal/nightly-dme-dcm.yaml --target standalone
 
-# Pre-release — DME + DCM against ROCm 10.1.0rc1
-python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0rc1.yaml
+# Pre-release — DME + DCM against ROCm 10.1.0 (auto-detects latest RC)
+python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0.yaml
 
 # Dry run — print manifest to stdout, skip downloads
 python3 ci-internal/gen_image_manifest.py ci-internal/nightly-dme-dcm.yaml --dry-run
@@ -56,7 +56,7 @@ ci-internal/
 │   ├── baseline-v1.5.1.yaml           # gpu-operator + KMM at v1.5.1
 │   └── baseline-v1.5.2.yaml           # (created when baseline moves up)
 ├── nightly-dme-dcm.yaml              # scenario configs
-└── prerelease-10.1.0rc1.yaml
+└── prerelease-10.1.0.yaml
 ```
 
 ## Scenario Config Format
@@ -68,7 +68,7 @@ baseline: baselines/baseline-v1.5.1.yaml
 mode: nightly
 target: k8                    # k8 | openshift | standalone | hypervisor
 rocm_version: "10.2.0"
-# date: "20260923"            # optional — defaults to today (UTC)
+# date: "20260923"            # optional — defaults to latest available from CloudFront
 
 overrides:
   dme:
@@ -80,22 +80,31 @@ overrides:
 Image tag is constructed as `{version}-{rocm_version}a{date}`,
 e.g. `v1.5.3-10.2.0a20260923`.
 
-### Pre-release
+### Pre-release (auto-detect)
 
 ```yaml
 baseline: baselines/baseline-v1.5.1.yaml
 mode: pre-release
 target: k8
+rocm_version: "10.1.0"
 
 overrides:
   dme:
-    image_tag: v1.5.3-10.1.0rc1-1
+    version: v1.5.3
   dcm:
-    image_tag: v1.5.3-10.1.0rc1-1
+    version: v1.5.3
 ```
 
-Image tag is provided directly — no construction needed.
-DME and DCM can have independent tags (different build numbers).
+Auto-detects the latest RC and build number from CloudFront matching
+`version` and `rocm_version` (e.g., `v1.5.3-10.1.0rc2-3`).
+
+To pin a specific tag instead of auto-detect, use `image_tag`:
+
+```yaml
+overrides:
+  dme:
+    image_tag: v1.5.3-10.1.0rc2-2
+```
 
 ## Image Tag Formats
 

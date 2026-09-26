@@ -14,21 +14,27 @@ resolves image tags for override components (DME, DCM), downloads helm charts an
 debs from CloudFront, and writes a complete manifest for pytest --image-manifest.
 
 Two modes:
-  - nightly:     tag = {version}-{rocm_version}a{date}
-  - pre-release: tag provided as image_tag in the scenario config
+  - nightly:     auto-detects latest date from CloudFront, or uses --date override.
+                 Tag format: {version}-{rocm_version}a{date}
+  - pre-release: auto-detects latest RC + build number from CloudFront (matching
+                 version + rocm_version), or uses explicit image_tag pin.
+                 Tag format: {version}-{rocm_version}rc{N}-{build}
 
 Usage:
   python3 ci-internal/gen_image_manifest.py ci-internal/nightly-dme-dcm.yaml
-  python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0rc1.yaml
-  python3 ci-internal/gen_image_manifest.py ci-internal/nightly-dme-dcm.yaml --date 20260923 --dry-run
+  python3 ci-internal/gen_image_manifest.py ci-internal/nightly-dme-dcm.yaml --date 20260923
+  python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0.yaml
+  python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0.yaml --dry-run
 """
 
 import argparse
 import copy
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -57,7 +63,7 @@ COMPONENT_CATALOG = {
             },
         },
         "helm_charts": {
-            "device-metrics-exporter-helm": {
+            "exporter": {
                 "filename_template": "device-metrics-exporter-charts-{tag}.tgz",
                 "targets": ["k8", "openshift"],
             },
@@ -99,6 +105,84 @@ def die(msg):
     sys.exit(1)
 
 
+# ---------------------------------------------------------------------------
+# CloudFront S3 listing helpers
+# ---------------------------------------------------------------------------
+
+def _s3_list_prefixes(prefix):
+    """List subdirectory names under a given S3 prefix via CloudFront XML listing."""
+    url = f"{CLOUDFRONT_BASE}/?list-type=2&delimiter=/&prefix={prefix}"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "gen-image-manifest/2.0"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = resp.read().decode("utf-8")
+    except (urllib.error.HTTPError, urllib.error.URLError, OSError) as exc:
+        print(f"  WARNING: CloudFront listing failed for {prefix}: {exc}", file=sys.stderr)
+        return []
+
+    root = ET.fromstring(body)
+    ns = ""
+    if root.tag.startswith("{"):
+        ns = root.tag.split("}")[0] + "}"
+
+    entries = []
+    for cp in root.findall(f".//{ns}CommonPrefixes/{ns}Prefix"):
+        text = cp.text or ""
+        name = text[len(prefix):].strip("/")
+        if name:
+            entries.append(name)
+    return entries
+
+
+def _resolve_nightly_date(s3_prefix, comp):
+    """Auto-detect the latest nightly date folder (YYYYMMDD) from CloudFront.
+
+    Returns the date string. Falls back to today (UTC) if listing fails.
+    """
+    print(f"  Auto-detecting latest nightly date for {comp}...", file=sys.stderr)
+    prefix = f"{s3_prefix}/nightly/"
+    entries = _s3_list_prefixes(prefix)
+    dates = sorted(e for e in entries if re.match(r"^\d{8}$", e))
+    if dates:
+        print(f"  {comp}: latest nightly date: {dates[-1]}", file=sys.stderr)
+        return dates[-1]
+    fallback = datetime.now(timezone.utc).strftime("%Y%m%d")
+    print(f"  WARNING: Could not detect latest nightly date for {comp} "
+          f"— using today ({fallback})", file=sys.stderr)
+    return fallback
+
+
+def _resolve_prerelease_tag(s3_prefix, version, rocm_version, comp):
+    """Auto-detect the latest pre-release tag matching version and rocm_version.
+
+    Folders look like: v1.5.3-10.1.0rc2-2
+    Picks the highest RC number, then highest build number.
+    Dies if no matching folder is found.
+    """
+    print(f"  Auto-detecting latest pre-release for {comp} "
+          f"({version}-{rocm_version}*)...", file=sys.stderr)
+    prefix = f"{s3_prefix}/pre-release/"
+    entries = _s3_list_prefixes(prefix)
+
+    pattern = re.compile(
+        rf"^{re.escape(version)}-{re.escape(rocm_version)}rc(\d+)-(\d+)$"
+    )
+    matches = []
+    for entry in entries:
+        m = pattern.match(entry)
+        if m:
+            matches.append((int(m.group(1)), int(m.group(2)), entry))
+
+    if not matches:
+        die(f"no pre-release found matching {version}-{rocm_version}* "
+            f"under {s3_prefix}/pre-release/")
+
+    matches.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    tag = matches[0][2]
+    print(f"  Resolved: {tag}", file=sys.stderr)
+    return tag
+
+
 def load_config(config_path):
     """Load and validate scenario config YAML."""
     path = Path(config_path)
@@ -132,6 +216,17 @@ def load_config(config_path):
     if config["mode"] == "nightly" and "rocm_version" not in config:
         die(f"{path}: nightly mode requires 'rocm_version'")
 
+    if config["mode"] == "pre-release":
+        for comp, comp_cfg in config["overrides"].items():
+            has_tag = "image_tag" in comp_cfg
+            has_version = "version" in comp_cfg
+            if not has_tag and not has_version:
+                die(f"{path}: pre-release override for '{comp}' must have "
+                    f"either 'image_tag' (pin) or 'version' (auto-detect)")
+            if has_version and not has_tag and "rocm_version" not in config:
+                die(f"{path}: pre-release auto-detect for '{comp}' requires "
+                    f"'rocm_version' at the top level")
+
     return config
 
 
@@ -159,23 +254,29 @@ def resolve_tags(config, date_override=None):
     """Resolve image_tag for each override component.
 
     Returns dict mapping component name to its resolved tag string.
+
+    Nightly: auto-detects latest date per component from CloudFront if no date provided.
+    Pre-release: auto-detects latest RC + build from CloudFront if no image_tag provided.
     """
     mode = config["mode"]
     tags = {}
+    pinned_date = date_override or config.get("date") if mode == "nightly" else None
 
     for comp, comp_cfg in config["overrides"].items():
+        s3_prefix = COMPONENT_CATALOG[comp]["s3_prefix"]
+
         if mode == "pre-release":
-            if "image_tag" not in comp_cfg:
-                die(f"pre-release override for '{comp}' must have 'image_tag'")
-            tags[comp] = comp_cfg["image_tag"]
+            if "image_tag" in comp_cfg:
+                tags[comp] = comp_cfg["image_tag"]
+            else:
+                tags[comp] = _resolve_prerelease_tag(
+                    s3_prefix, comp_cfg["version"], config["rocm_version"], comp)
 
         else:  # nightly
             if "version" not in comp_cfg:
                 die(f"nightly override for '{comp}' must have 'version'")
-            version = comp_cfg["version"]
-            rocm_version = config["rocm_version"]
-            date = date_override or config.get("date") or datetime.now(timezone.utc).strftime("%Y%m%d")
-            tags[comp] = f"{version}-{rocm_version}a{date}"
+            date = pinned_date or _resolve_nightly_date(s3_prefix, comp)
+            tags[comp] = f"{comp_cfg['version']}-{config['rocm_version']}a{date}"
 
     return tags
 
@@ -244,9 +345,10 @@ def download_artifacts(config, tags, download_dir, dry_run=False):
                 downloads[art_key] = filename
 
     if failures:
-        print(f"\nwarn: {len(failures)} download(s) failed:", file=sys.stderr)
+        print(f"\nerror: {len(failures)} download(s) failed:", file=sys.stderr)
         for f in failures:
             print(f"  - {f}", file=sys.stderr)
+        die(f"{len(failures)} required artifact(s) failed to download — cannot generate a complete manifest")
 
     return downloads
 
@@ -396,6 +498,13 @@ def main():
     if args.target:
         config["target"] = args.target
     baseline = load_baseline(config, ci_internal_dir)
+
+    if args.date and config["mode"] != "nightly":
+        die("--date is only valid for nightly mode")
+
+    # Apply CLI date override to config so download_artifacts() uses it too
+    if args.date:
+        config["date"] = args.date
 
     # Resolve image tags
     tags = resolve_tags(config, date_override=args.date)

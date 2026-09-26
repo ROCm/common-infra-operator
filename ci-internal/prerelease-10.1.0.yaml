@@ -1,0 +1,22 @@
+# Pre-release DME + DCM scenario config for ROCm 10.1.0
+#
+# Auto-detects the latest RC and build number from CloudFront.
+# No changes needed when new RCs are published (rc0, rc1, rc2, ...).
+#
+# Usage:
+#   python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0.yaml
+#
+# To pin a specific tag instead of auto-detect, replace 'version' with 'image_tag':
+#   dme:
+#     image_tag: v1.5.3-10.1.0rc2-2
+#
+baseline: baselines/baseline-v1.5.1.yaml
+mode: pre-release
+target: k8
+rocm_version: "10.1.0"
+
+overrides:
+  dme:
+    version: v1.5.3
+  dcm:
+    version: v1.5.3
