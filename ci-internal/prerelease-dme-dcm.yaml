@@ -1,0 +1,17 @@
+# Pre-release DME + DCM scenario. The CloudFront build comes from --tag.
+#
+# Usage:
+#   python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-dme-dcm.yaml --tag v1.5.3-10.1.0rc3-1
+#   python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-dme-dcm.yaml --tag v1.5.3-10.1.0rc3-1 --target standalone
+#   python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-dme-dcm.yaml --tag v1.5.3-10.1.0rc3-1 --target k8
+#
+# --tag is applied to every override below. --date is nightly-only.
+#
+baseline: baselines/baseline-v1.5.1.yaml
+mode: pre-release
+target: k8
+rocm_version: "10.1.0"
+
+overrides:
+  dme: {}
+  dcm: {}

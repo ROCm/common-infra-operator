@@ -22,6 +22,13 @@ python3 ci-internal/gen_image_manifest.py ci-internal/nightly-dme-dcm.yaml --tar
 # Pre-release — DME + DCM against ROCm 10.1.0 (auto-detects latest RC)
 python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0.yaml
 
+# Pre-release — one exact CloudFront build (same tag on DME and DCM)
+python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-dme-dcm.yaml --tag v1.5.3-10.1.0rc3-1
+
+# Same build, standalone debs instead of the k8 helm chart
+python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-dme-dcm.yaml \
+    --tag v1.5.3-10.1.0rc3-1 --target standalone
+
 # Dry run — print manifest to stdout, skip downloads
 python3 ci-internal/gen_image_manifest.py ci-internal/nightly-dme-dcm.yaml --dry-run
 ```
@@ -56,7 +63,8 @@ ci-internal/
 │   ├── baseline-v1.5.1.yaml           # gpu-operator + KMM at v1.5.1
 │   └── baseline-v1.5.2.yaml           # (created when baseline moves up)
 ├── nightly-dme-dcm.yaml              # scenario configs
-└── prerelease-10.1.0.yaml
+├── prerelease-10.1.0.yaml            # latest RC for ROCm 10.1.0
+└── prerelease-dme-dcm.yaml           # exact build via --tag
 ```
 
 ## Scenario Config Format
@@ -98,7 +106,15 @@ overrides:
 Auto-detects the latest RC and build number from CloudFront matching
 `version` and `rocm_version` (e.g., `v1.5.3-10.1.0rc2-3`).
 
-To pin a specific tag instead of auto-detect, use `image_tag`:
+To pin one CloudFront build for every override, pass `--tag` (it wins over `image_tag` and auto-detect):
+
+```bash
+python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-dme-dcm.yaml --tag v1.5.3-10.1.0rc3-1
+```
+
+`ci-internal/prerelease-dme-dcm.yaml` lists DME and DCM with empty overrides so the tag always comes from that flag. `--date` is rejected for this file.
+
+To pin inside a scenario instead, use `image_tag`:
 
 ```yaml
 overrides:
@@ -130,9 +146,9 @@ for reproducibility.
 ## CLI Reference
 
 ```
-gen_image_manifest.py [-h] [--target TARGET] [--date DATE] [--output OUTPUT]
-                      [--download-dir DIR] [--dry-run] [--repo-root DIR]
-                      config
+gen_image_manifest.py [-h] [--target TARGET] [--date DATE] [--tag TAG]
+                      [--output OUTPUT] [--download-dir DIR] [--dry-run]
+                      [--repo-root DIR] config
 ```
 
 | Argument | Description |
@@ -140,6 +156,7 @@ gen_image_manifest.py [-h] [--target TARGET] [--date DATE] [--output OUTPUT]
 | `config` | Path to scenario config YAML (positional, required) |
 | `--target` | Override deployment target (k8, openshift, standalone, hypervisor) |
 | `--date` | Override date for nightly mode (YYYYMMDD). See date resolution below. |
+| `--tag` | Exact CloudFront tag for every pre-release override (for example `v1.5.3-10.1.0rc3-1`). Skips latest-RC auto-detect. |
 | `--output`, `-o` | Output manifest path (default: `tests/pytests/images.yaml`) |
 | `--download-dir` | Download directory (default: `tests/pytests/downloads/`) |
 | `--dry-run` | Print manifest to stdout, skip downloads |
