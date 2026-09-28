@@ -25,10 +25,10 @@ jobs:
       contents: write
     steps:
       - name: Checkout code at tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
 
       - name: Package Helm chart
         run: |
@@ -38,7 +38,7 @@ jobs:
             "${{ inputs.chart-dir }}"
 
       - name: Checkout gh-pages branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: gh-pages
           path: gh-pages

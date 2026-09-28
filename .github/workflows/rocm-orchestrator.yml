@@ -68,7 +68,7 @@ jobs:
       - name: Checkout gpu-operator
         id: checkout
         continue-on-error: true
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ROCm/gpu-operator
           path: gpu-operator
