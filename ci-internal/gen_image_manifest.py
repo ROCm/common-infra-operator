@@ -426,6 +426,13 @@ def merge_and_write(baseline, config, tags, downloads, output_path):
                 "kind": "debian",
             }
 
+    # Baseline keeps an unfilled driver slot (kind container, no location).
+    # Pytest requires location on every container entry, so omit those slots.
+    for name, entry in list(target_entries.items()):
+        if isinstance(entry, dict) and entry.get("kind") == "container" and not entry.get("location"):
+            print(f"  omitting {name}: container entry has no location", file=sys.stderr)
+            del target_entries[name]
+
     # Strip non-target sections — output only meta + the selected target
     manifest = {
         "images": {
