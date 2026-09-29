@@ -162,7 +162,7 @@ jobs:
     steps:
       - name: Configure AWS credentials for dispatch counter
         if: inputs.trigger_event == 'workflow_dispatch' || inputs.trigger_event == 'pre-release'
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.ROCK_CI_S3_SECRET }}
           aws-region: us-east-1
@@ -279,7 +279,7 @@ jobs:
         id: dedup
         if: inputs.trigger_event != 'pull_request'
         continue-on-error: true
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           key: dedup-${{ inputs.component }}-${{ steps.resolve.outputs.rocm_tarball_version }}-${{ inputs.trigger_sha }}
           path: .dedup-marker

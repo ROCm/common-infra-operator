@@ -198,7 +198,7 @@ jobs:
         id: dedup
         if: inputs.trigger_event == 'schedule'
         continue-on-error: true
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           key: dedup-${{ inputs.component }}-${{ steps.resolve.outputs.date }}-${{ inputs.trigger_sha }}
           path: .dedup-marker
