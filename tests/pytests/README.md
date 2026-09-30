@@ -50,6 +50,10 @@ python3 ci-internal/gen_image_manifest.py ci-internal/nightly-dme-dcm.yaml \
 
 # Pre-release — DME + DCM against ROCm 10.1.0 (auto-detects latest RC)
 python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0.yaml
+
+# Pre-release — one exact CloudFront build
+python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-dme-dcm.yaml \
+    --tag v1.5.3-10.1.0rc3-1 --target standalone
 ```
 
 See `ci-internal/README.md` for the full manifest generator documentation.

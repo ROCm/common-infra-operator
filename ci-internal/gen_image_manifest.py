@@ -17,13 +17,15 @@ Two modes:
   - nightly:     auto-detects latest date from CloudFront, or uses --date override.
                  Tag format: {version}-{rocm_version}a{date}
   - pre-release: auto-detects latest RC + build number from CloudFront (matching
-                 version + rocm_version), or uses explicit image_tag pin.
+                 version + rocm_version), uses an image_tag pin in the scenario,
+                 or uses --tag for one exact CloudFront build on every override.
                  Tag format: {version}-{rocm_version}rc{N}-{build}
 
 Usage:
   python3 ci-internal/gen_image_manifest.py ci-internal/nightly-dme-dcm.yaml
   python3 ci-internal/gen_image_manifest.py ci-internal/nightly-dme-dcm.yaml --date 20260923
   python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0.yaml
+  python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-dme-dcm.yaml --tag v1.5.3-10.1.0rc3-1
   python3 ci-internal/gen_image_manifest.py ci-internal/prerelease-10.1.0.yaml --dry-run
 """
 
@@ -217,12 +219,14 @@ def load_config(config_path):
         die(f"{path}: nightly mode requires 'rocm_version'")
 
     if config["mode"] == "pre-release":
-        for comp, comp_cfg in config["overrides"].items():
+        for comp, comp_cfg in list(config["overrides"].items()):
+            if comp_cfg is None:
+                config["overrides"][comp] = {}
+                comp_cfg = {}
+            if not isinstance(comp_cfg, dict):
+                die(f"{path}: pre-release override for '{comp}' must be a mapping")
             has_tag = "image_tag" in comp_cfg
             has_version = "version" in comp_cfg
-            if not has_tag and not has_version:
-                die(f"{path}: pre-release override for '{comp}' must have "
-                    f"either 'image_tag' (pin) or 'version' (auto-detect)")
             if has_version and not has_tag and "rocm_version" not in config:
                 die(f"{path}: pre-release auto-detect for '{comp}' requires "
                     f"'rocm_version' at the top level")
@@ -250,27 +254,33 @@ def load_baseline(config, ci_internal_dir):
     return copy.deepcopy(baseline)
 
 
-def resolve_tags(config, date_override=None):
+def resolve_tags(config, date_override=None, tag_override=None):
     """Resolve image_tag for each override component.
 
     Returns dict mapping component name to its resolved tag string.
 
     Nightly: auto-detects latest date per component from CloudFront if no date provided.
-    Pre-release: auto-detects latest RC + build from CloudFront if no image_tag provided.
+    Pre-release: --tag wins, then image_tag in the scenario, then CloudFront auto-detect.
     """
     mode = config["mode"]
     tags = {}
     pinned_date = date_override or config.get("date") if mode == "nightly" else None
 
     for comp, comp_cfg in config["overrides"].items():
+        comp_cfg = comp_cfg or {}
         s3_prefix = COMPONENT_CATALOG[comp]["s3_prefix"]
 
         if mode == "pre-release":
-            if "image_tag" in comp_cfg:
+            if tag_override:
+                tags[comp] = tag_override
+            elif "image_tag" in comp_cfg:
                 tags[comp] = comp_cfg["image_tag"]
-            else:
+            elif "version" in comp_cfg:
                 tags[comp] = _resolve_prerelease_tag(
                     s3_prefix, comp_cfg["version"], config["rocm_version"], comp)
+            else:
+                die(f"pre-release override for '{comp}' needs --tag, "
+                    f"image_tag, or version")
 
         else:  # nightly
             if "version" not in comp_cfg:
@@ -416,6 +426,13 @@ def merge_and_write(baseline, config, tags, downloads, output_path):
                 "kind": "debian",
             }
 
+    # Baseline keeps an unfilled driver slot (kind container, no location).
+    # Pytest requires location on every container entry, so omit those slots.
+    for name, entry in list(target_entries.items()):
+        if isinstance(entry, dict) and entry.get("kind") == "container" and not entry.get("location"):
+            print(f"  omitting {name}: container entry has no location", file=sys.stderr)
+            del target_entries[name]
+
     # Strip non-target sections — output only meta + the selected target
     manifest = {
         "images": {
@@ -456,6 +473,11 @@ def parse_args():
     parser.add_argument(
         "--date",
         help="Override date for nightly mode (YYYYMMDD, default: today UTC)",
+    )
+    parser.add_argument(
+        "--tag",
+        help="Exact CloudFront tag for every pre-release override "
+             "(e.g. v1.5.3-10.1.0rc3-1). Skips latest-RC auto-detect.",
     )
     parser.add_argument(
         "--output", "-o",
@@ -501,13 +523,15 @@ def main():
 
     if args.date and config["mode"] != "nightly":
         die("--date is only valid for nightly mode")
+    if args.tag and config["mode"] != "pre-release":
+        die("--tag is only valid for pre-release mode")
 
     # Apply CLI date override to config so download_artifacts() uses it too
     if args.date:
         config["date"] = args.date
 
     # Resolve image tags
-    tags = resolve_tags(config, date_override=args.date)
+    tags = resolve_tags(config, date_override=args.date, tag_override=args.tag)
 
     print(f"Mode: {config['mode']}, Target: {config['target']}", file=sys.stderr)
     for comp, tag in tags.items():
