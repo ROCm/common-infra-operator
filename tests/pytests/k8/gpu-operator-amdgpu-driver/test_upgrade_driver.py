@@ -67,7 +67,6 @@ def deviceconfig_install(gpu_cluster, images, gpu_operator_install, environment)
         'metricsExporter.enable': True,
         'metricsExporter.serviceType' : 'NodePort',
         'configManager.enable': True,
-        'testRunner.enable': True,
     }
     test_config.update(images)
 

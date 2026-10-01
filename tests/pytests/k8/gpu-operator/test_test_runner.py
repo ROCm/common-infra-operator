@@ -34,7 +34,7 @@ import lib.metric_util as metric_util
 import lib.amdgpu as amdgpu_util
 from lib.util import K8Helper
 
-#pytestmark = pytest.mark.skip("debugging")
+pytestmark = pytest.mark.skip("test-runner operand is not deployed in DME/DCM-only CI targets")
 Logger = logging.getLogger("k8.test_test_runner")
 LogPrettyPrinter = pprint.PrettyPrinter(indent = 2)
 

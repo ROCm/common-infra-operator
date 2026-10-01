@@ -318,23 +318,6 @@ Test cases in `test_metrics_values.py`:
 - `test_exporter_metrics_value_accuracy` — metric values match sysfs/rocm-smi
 - `test_metric_coverage` — no gaps in metric catalog
 
-#### Test Runner — health check and diagnostics framework
-
-```bash
-./k8_test_launcher.sh \
-    --app gpu-operator \
-    --image-manifest images.yaml \
-    --amdgpu-driver-spec lib/files/amd-deviceconfig-default-driver-spec.json \
-    --module test_runner
-```
-
-Test cases in `test_test_runner.py`:
-- `test_deviceconfig_test_runner_deploy` — test-runner pod lifecycle
-- `test_deviceconfig_test_runner_disable` — disable/enable test-runner
-- `test_deviceconfig_unhealthy` — unhealthy GPU detection
-- `test_manual_job` / `test_pre_job` — on-demand and pre-workload jobs
-- `test_test_runner_rolling_update` — test-runner rolling upgrade
-
 #### DME Helm Chart — standalone exporter install (no gpu-operator)
 
 ```bash
@@ -388,7 +371,6 @@ Test cases in `test_config_manager.py`:
 - `test_negative_partitioning` — invalid partition spec handling
 - `test_partitioning_no_workload_MI300X` / `MI325X` / `MI350X` / `MI350P` — idle partitioning per GPU
 - `test_partitioning_workload_MI300X` / `MI325X` / `MI350X` / `MI350P` — partitioning under workload
-- `test_partitioning_test_runner` — partitioning with test-runner active
 - `test_config_manager_operand_upgrade` — DCM rolling upgrade
 - `test_deviceconfig_config_manager_disable` — disable/enable DCM
 
@@ -478,13 +460,6 @@ skipped when inbox mode is selected.
     --image-manifest images.yaml \
     --amdgpu-driver-spec lib/files/amd-inbox-driver-spec.json \
     --module config_manager
-
-# QA validation — inbox driver, test runner sanity
-./k8_test_launcher.sh \
-    --app gpu-operator \
-    --image-manifest images.yaml \
-    --amdgpu-driver-spec lib/files/amd-inbox-driver-spec.json \
-    --module test_runner
 
 # QA validation — inbox driver, DME helm chart only
 ./k8_test_launcher.sh \
