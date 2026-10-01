@@ -1694,6 +1694,7 @@ def test_partitioning_workload_MI325X(gpu_cluster, deviceconfig_install, environ
     run_partition_test_scenario(gpu_cluster, environment, request, profile, workload = True)
 
 
+@pytest.mark.skip(reason="test-runner operand is not deployed in DME/DCM-only CI targets")
 @pytest.mark.level23
 @pytest.mark.parametrize("profile", ["CPX_NPS4", "DPX_NPS2"])
 def test_partitioning_test_runner(gpu_cluster, deviceconfig_install, environment, request, images, profile):
