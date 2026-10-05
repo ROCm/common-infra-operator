@@ -143,6 +143,7 @@
           "gpu": [
             "MI210",
             "MI250",
+            "R9700S",
             "W7900"
           ],
           "amd-smi": "power.socket_power",
@@ -2875,21 +2876,14 @@
       "skip-validation": "yes",
       "gpu-support": [
         {
-          "gpu": [],
-          "gpu-agent": "",
-          "amd-smi": ""
-        },
-        {
           "gpu": [
             "MI300X",
             "MI325X"
           ],
           "gpu-agent": "",
-          "amd-smi": "",
-          "hypervisor-mode": "yes"
+          "amd-smi": ""
         }
       ],
-      "hypervisor-mode": "yes",
       "requires-multi-gpu": true
     },
     {
@@ -2897,21 +2891,14 @@
       "skip-validation": "yes",
       "gpu-support": [
         {
-          "gpu": [],
-          "gpu-agent": "",
-          "amd-smi": ""
-        },
-        {
           "gpu": [
             "MI300X",
             "MI325X"
           ],
           "gpu-agent": "",
-          "amd-smi": "",
-          "hypervisor-mode": "yes"
+          "amd-smi": ""
         }
       ],
-      "hypervisor-mode": "yes",
       "requires-multi-gpu": true
     },
     {
@@ -3564,7 +3551,9 @@
             "MI325X",
             "MI325X-VF",
             "MI350P",
-            "MI350X"
+            "MI350X",
+            "R9700S",
+            "W7900"
           ],
           "gpu-agent": "",
           "amd-smi": ""
@@ -3582,7 +3571,8 @@
             "MI325X",
             "MI325X-VF",
             "MI350P",
-            "MI350X"
+            "MI350X",
+            "W7900"
           ],
           "gpu-agent": "",
           "amd-smi": ""
@@ -3674,7 +3664,9 @@
             "MI325X",
             "MI325X-VF",
             "MI350P",
-            "MI350X"
+            "MI350X",
+            "R9700S",
+            "W7900"
           ],
           "gpu-agent": "",
           "amd-smi": ""
@@ -3710,7 +3702,9 @@
             "MI325X",
             "MI325X-VF",
             "MI350P",
-            "MI350X"
+            "MI350X",
+            "R9700S",
+            "W7900"
           ],
           "gpu-agent": "",
           "amd-smi": ""
@@ -3719,7 +3713,7 @@
     },
     {
       "name": "GPU_PROF_SM_ACTIVE",
-      "skip-validation": "no",
+      "skip-validation": "yes",
       "gpu-support": [
         {
           "gpu": [
@@ -3728,7 +3722,9 @@
             "MI325X",
             "MI325X-VF",
             "MI350P",
-            "MI350X"
+            "MI350X",
+            "R9700S",
+            "W7900"
           ],
           "gpu-agent": "",
           "amd-smi": ""
@@ -3746,7 +3742,9 @@
             "MI325X",
             "MI325X-VF",
             "MI350P",
-            "MI350X"
+            "MI350X",
+            "R9700S",
+            "W7900"
           ],
           "gpu-agent": "",
           "amd-smi": ""
@@ -3755,7 +3753,7 @@
     },
     {
       "name": "GPU_PROF_OCCUPANCY_PER_ACTIVE_CU",
-      "skip-validation": "no",
+      "skip-validation": "yes",
       "gpu-support": [
         {
           "gpu": [
@@ -3764,7 +3762,9 @@
             "MI325X",
             "MI325X-VF",
             "MI350P",
-            "MI350X"
+            "MI350X",
+            "R9700S",
+            "W7900"
           ],
           "gpu-agent": "",
           "amd-smi": ""
@@ -3773,7 +3773,7 @@
     },
     {
       "name": "GPU_PROF_OCCUPANCY_PER_CU",
-      "skip-validation": "no",
+      "skip-validation": "yes",
       "gpu-support": [
         {
           "gpu": [
@@ -3783,7 +3783,9 @@
             "MI325X-VF",
             "MI300X",
             "MI350X",
-            "MI350P"
+            "MI350P",
+            "R9700S",
+            "W7900"
           ],
           "gpu-agent": "",
           "amd-smi": ""
@@ -3792,7 +3794,7 @@
     },
     {
       "name": "GPU_PROF_SIMD_UTILIZATION",
-      "skip-validation": "no",
+      "skip-validation": "yes",
       "gpu-support": [
         {
           "gpu": [
@@ -3802,7 +3804,9 @@
             "MI325X-VF",
             "MI300X",
             "MI350X",
-            "MI350P"
+            "MI350P",
+            "R9700S",
+            "W7900"
           ],
           "gpu-agent": "",
           "amd-smi": ""

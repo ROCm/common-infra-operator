@@ -43,6 +43,6 @@
  
     },
     "gpuClientSystemdServices": {
-        "names": ["amd-metrics-exporter", "gpuagent"]
+        "names": ["fleet-observability-kubelet", "amd-metrics-exporter", "gpuagent"]
     }
 }
