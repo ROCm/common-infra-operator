@@ -342,7 +342,7 @@ def generate_partitioning_check(gpu_series: str, num_gpus: int) -> dict:
 
     return {
         "gpu-config-profiles": profiles,
-        "gpuClientSystemdServices": {"names": ["amd-metrics-exporter", "gpuagent"]}
+        "gpuClientSystemdServices": {"names": ["fleet-observability-kubelet", "amd-metrics-exporter", "gpuagent"]}
     }
 
 def generate_partitioning_check_file(gpu_series: str, num_gpus: int, logs_dir: str) -> str:

@@ -112,13 +112,16 @@ def olm_subscription_install(namespace: str, catalog: str, channel: str,
         Logger.error(f"Failed to create namespace {namespace}: {ret_stderr}")
         return ret_code, "", ret_stderr
 
-    # Delete any pre-existing OperatorGroup so we always get AllNamespaces mode.
-    # A stale OwnNamespace OperatorGroup (from prior onboarding or manual setup)
-    # survives olm_force_cleanup and silently poisons the install via 409.
+    # Delete any pre-existing OperatorGroup before recreating it.
     k8_util.k8_delete_custom_resource(
         "operators.coreos.com", "v1", "operatorgroups",
         namespace, "amd-gpu-operator-group")
 
+    # Use AllNamespaces mode (spec: {}) — the certified-operators amd-gpu-operator
+    # package is cluster-scoped and only supports AllNamespaces install mode.
+    # OwnNamespace causes OLM to reject the install (CSV created but controller pod
+    # never deployed).  CSV proliferation across 80+ namespaces is handled by
+    # _delete_csv_all_namespaces which iterates per-namespace and strips finalizers.
     og_spec = {
         "apiVersion": "operators.coreos.com/v1",
         "kind": "OperatorGroup",
@@ -292,6 +295,77 @@ def olm_cleanup(k8_cluster : common.k8_cluster, release_name : str, namespace : 
 
     return k8_util.k8_delete_custom_resource("operators.coreos.com", "v1alpha1", "catalogsources", namespace, f"{release_name}-catalog")
 
+def _delete_csvs_in_namespace(custom_api, release_name: str, namespace: str, critical: bool = False):
+    """Delete CSVs matching release_name in one namespace, stripping finalizers first.
+
+    CSV names include a version suffix (e.g. amd-gpu-operator.v1.5.2), so we
+    match by substring rather than requiring an exact name.
+
+    When critical=True (the installation namespace), list/delete failures are
+    logged at ERROR level and re-raised so the caller knows cleanup did not
+    complete.  For copied namespaces (critical=False) failures are best-effort.
+    """
+    try:
+        ns_csvs = custom_api.list_namespaced_custom_object(
+            group="operators.coreos.com", version="v1alpha1",
+            namespace=namespace, plural="clusterserviceversions",
+            _request_timeout=15)
+        for csv in ns_csvs.get("items", []):
+            if release_name not in csv["metadata"]["name"]:
+                continue
+            csv_name = csv["metadata"]["name"]
+            if csv["metadata"].get("finalizers"):
+                try:
+                    custom_api.patch_namespaced_custom_object(
+                        "operators.coreos.com", "v1alpha1", namespace,
+                        "clusterserviceversions", csv_name,
+                        {"metadata": {"finalizers": []}})
+                except Exception as patch_err:
+                    Logger.warning(f"Failed to strip finalizers from {csv_name} in {namespace}: {patch_err}")
+            try:
+                custom_api.delete_namespaced_custom_object(
+                    "operators.coreos.com", "v1alpha1", namespace,
+                    "clusterserviceversions", csv_name)
+                Logger.info(f"Deleted CSV {csv_name} in namespace {namespace}")
+            except Exception as del_err:
+                Logger.warning(f"Failed to delete CSV {csv_name} in {namespace}: {del_err}")
+    except Exception as e:
+        if critical:
+            Logger.error(f"Failed to clean CSVs in installation namespace {namespace}: {e}")
+            raise
+        Logger.debug(f"Skipping namespace {namespace}: {e}")
+
+
+def _delete_csv_all_namespaces(release_name: str, fallback_namespace: str):
+    """Delete every CSV whose name contains release_name across all namespaces.
+
+    Iterates namespaces one at a time to avoid the large cluster-wide CSV list
+    that triggers IncompleteRead on clusters with 80+ namespaces.  Strips
+    finalizers before issuing the delete so Terminating state doesn't stall.
+
+    Failures in fallback_namespace (the installation namespace) are propagated;
+    failures in other namespaces (OLM copies) are best-effort.
+    """
+    custom_api = None
+    try:
+        from kubernetes import client as k8_client
+        v1 = k8_client.CoreV1Api()
+        custom_api = k8_client.CustomObjectsApi()
+        ns_list = v1.list_namespace(_request_timeout=30)
+    except Exception as e:
+        Logger.warning(f"Cannot list namespaces for CSV cleanup, falling back to {fallback_namespace} only: {e}")
+        if custom_api is None:
+            Logger.error("kubernetes client unavailable; cannot clean stale CSVs")
+            return
+        _delete_csvs_in_namespace(custom_api, release_name, fallback_namespace, critical=True)
+        return
+
+    for ns in ns_list.items:
+        _delete_csvs_in_namespace(
+            custom_api, release_name, ns.metadata.name,
+            critical=(ns.metadata.name == fallback_namespace))
+
+
 @log_arguments
 def olm_force_cleanup(k8_cluster: common.k8_cluster, release_name: str, namespace: str):
     """Aggressively remove all OLM artifacts for an operator.
@@ -323,18 +397,16 @@ def olm_force_cleanup(k8_cluster: common.k8_cluster, release_name: str, namespac
         "operators.coreos.com", "v1alpha1", "catalogsources",
         namespace, f"{release_name}-catalog")
 
-    # Delete any CSVs matching this release name across all namespaces.
-    # An AllNamespaces OperatorGroup causes OLM to copy the CSV to every namespace
-    # in the cluster; scoping the delete to just `namespace` leaves stale Pending
-    # copies everywhere and blocks the next install.
-    ret_code, csv_list, _ = k8_util.k8_list_clusterserviceversions()
-    if ret_code == 0:
-        for csv in csv_list:
-            if release_name in csv['metadata']['name']:
-                csv_ns = csv['metadata'].get('namespace', namespace)
-                k8_util.k8_delete_custom_resource(
-                    "operators.coreos.com", "v1alpha1", "clusterserviceversions",
-                    csv_ns, csv['metadata']['name'])
+    # Delete all CSV copies matching this release name across every namespace.
+    # An AllNamespaces OperatorGroup causes OLM to propagate the CSV to every
+    # namespace; scoping the delete to just `namespace` leaves stale copies
+    # cluster-wide that block the next install.
+    #
+    # We iterate per-namespace rather than using a single cluster-wide list
+    # because clusters with 80+ namespaces produce a response large enough to
+    # trigger IncompleteRead / timeout, causing the deletion loop to be skipped
+    # entirely when ret_code != 0.
+    _delete_csv_all_namespaces(release_name, namespace)
 
     # Delete stale controller-manager deployment (survives broken OLM installs)
     k8_util.k8_delete_deployment(namespace, f"{release_name}-controller-manager")
