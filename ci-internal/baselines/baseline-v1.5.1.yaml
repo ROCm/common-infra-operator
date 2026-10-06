@@ -52,8 +52,9 @@ images:
 
     test-runner:
       key: testRunner.image
-      location: container://<registry>/amdpsdo/test-runner
+      location: container://<registry>/rocm/test-runner
       kind: container
+      version: v1.5.2
       secret: docker-amdpsdo-auth
 
     config-manager:
@@ -143,8 +144,9 @@ images:
 
     test-runner:
       key: testRunner.image
-      location: container://<registry>/amdpsdo/test-runner
+      location: container://<registry>/rocm/test-runner
       kind: container
+      version: v1.5.2
       secret: docker-amdpsdo-auth
 
     config-manager:
