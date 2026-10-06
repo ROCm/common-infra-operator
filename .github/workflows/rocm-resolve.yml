@@ -85,9 +85,9 @@ on:
       build_needed:
         description: 'true if build should proceed'
         value: ${{ jobs.resolve.outputs.build_needed }}
-      nightly_date:
+      nightly_tag:
         description: 'YYYYMMDD date from nightly tarball (empty for non-nightly builds)'
-        value: ${{ jobs.resolve.outputs.nightly_date }}
+        value: ${{ jobs.resolve.outputs.nightly_tag }}
 
   workflow_dispatch:
     inputs:
@@ -161,7 +161,7 @@ jobs:
       version:              ${{ steps.resolve.outputs.version }}
       suffix:               ${{ steps.resolve.outputs.suffix }}
       scenario:             ${{ steps.resolve.outputs.scenario }}
-      nightly_date:         ${{ steps.resolve.outputs.nightly_date }}
+      nightly_tag:         ${{ steps.resolve.outputs.nightly_tag }}
       build_needed:         ${{ steps.dedup.outputs.cache-hit != 'true' || inputs.force_rebuild == true }}
     steps:
       - name: Configure AWS credentials for dispatch counter
@@ -270,7 +270,7 @@ jobs:
           echo "version=${VERSION}"                       >> "$GITHUB_OUTPUT"
           echo "suffix=${SUFFIX}"                         >> "$GITHUB_OUTPUT"
           echo "scenario=${SCENARIO}"                     >> "$GITHUB_OUTPUT"
-          echo "nightly_date=${DATE:-}"                    >> "$GITHUB_OUTPUT"
+          echo "nightly_tag=${DATE:-}"                    >> "$GITHUB_OUTPUT"
 
           echo "::notice::Component: ${COMPONENT}"
           echo "::notice::ROCm tarball: ${TARBALL_URL}"
