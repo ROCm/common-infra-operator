@@ -166,7 +166,7 @@ jobs:
     steps:
       - name: Configure AWS credentials for dispatch counter
         if: inputs.trigger_event == 'workflow_dispatch' || inputs.trigger_event == 'pre-release'
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@4a1596c86fd706dc0521e32f0121ad1a6d1adb74 # v6
         with:
           role-to-assume: ${{ secrets.ROCK_CI_S3_SECRET }}
           aws-region: us-east-1
@@ -284,7 +284,7 @@ jobs:
         id: dedup
         if: inputs.trigger_event != 'pull_request'
         continue-on-error: true
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           key: dedup-${{ inputs.component }}-${{ steps.resolve.outputs.rocm_tarball_version }}-${{ inputs.trigger_sha }}
           path: .dedup-marker
@@ -292,28 +292,40 @@ jobs:
 
       - name: Dedup summary
         if: steps.dedup.outputs.cache-hit == 'true' && inputs.force_rebuild != true
+        env:
+          COMPONENT: ${{ inputs.component }}
+          IMAGE_TAG: ${{ steps.resolve.outputs.image_tag }}
+          TRIGGER_SHA: ${{ inputs.trigger_sha }}
         run: |
           {
-            echo "## ${{ inputs.component }} Build — Skipped (dedup)"
+            echo "## ${COMPONENT} Build — Skipped (dedup)"
             echo ""
-            echo "Build already succeeded for tag \`${{ steps.resolve.outputs.image_tag }}\` at SHA \`${{ inputs.trigger_sha }}\`."
+            echo "Build already succeeded for tag \`${IMAGE_TAG}\` at SHA \`${TRIGGER_SHA}\`."
             echo "No rebuild needed. Use \`force_rebuild: true\` to override."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Resolve summary
         if: steps.dedup.outputs.cache-hit != 'true' || inputs.force_rebuild == true
+        env:
+          COMPONENT: ${{ inputs.component }}
+          SCENARIO: ${{ steps.resolve.outputs.scenario }}
+          ROCM_TARBALL_URL: ${{ steps.resolve.outputs.rocm_tarball_url }}
+          IMAGE_TAG: ${{ steps.resolve.outputs.image_tag }}
+          VERSION: ${{ steps.resolve.outputs.version }}
+          SUFFIX: ${{ steps.resolve.outputs.suffix }}
+          S3_PREFIX: ${{ steps.resolve.outputs.s3_prefix }}
         run: |
           {
-            echo "## ${{ inputs.component }} Build — Resolved"
+            echo "## ${COMPONENT} Build — Resolved"
             echo ""
             echo "| | |"
             echo "|---|---|"
-            echo "| Component | \`${{ inputs.component }}\` |"
-            echo "| Scenario | \`${{ steps.resolve.outputs.scenario }}\` |"
-            echo "| ROCm tarball | \`${{ steps.resolve.outputs.rocm_tarball_url }}\` |"
-            echo "| Image tag | \`${{ steps.resolve.outputs.image_tag }}\` |"
-            echo "| Version | \`${{ steps.resolve.outputs.version }}\` |"
-            echo "| Suffix | \`${{ steps.resolve.outputs.suffix }}\` |"
-            echo "| S3 prefix | \`${{ steps.resolve.outputs.s3_prefix }}\` |"
+            echo "| Component | \`${COMPONENT}\` |"
+            echo "| Scenario | \`${SCENARIO}\` |"
+            echo "| ROCm tarball | \`${ROCM_TARBALL_URL}\` |"
+            echo "| Image tag | \`${IMAGE_TAG}\` |"
+            echo "| Version | \`${VERSION}\` |"
+            echo "| Suffix | \`${SUFFIX}\` |"
+            echo "| S3 prefix | \`${S3_PREFIX}\` |"
             echo "| Build needed | \`true\` |"
           } >> "$GITHUB_STEP_SUMMARY"
