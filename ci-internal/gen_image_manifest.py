@@ -157,8 +157,12 @@ def _resolve_nightly_date(s3_prefix, comp):
 def _resolve_prerelease_tag(s3_prefix, version, rocm_version, comp):
     """Auto-detect the latest pre-release tag matching version and rocm_version.
 
-    Folders look like: v1.5.3-10.1.0rc2-2
-    Picks the highest RC number, then highest build number.
+    Matches two folder formats:
+      GA:  v1.5.3-10.1.0-1        (no rc, just build number)
+      RC:  v1.5.3-10.1.0rc2-2     (rc number + build number)
+
+    GA always takes priority over any RC. Within GA or RC, picks the
+    highest build number (and for RC, highest rc number first).
     Dies if no matching folder is found.
     """
     print(f"  Auto-detecting latest pre-release for {comp} "
@@ -166,23 +170,34 @@ def _resolve_prerelease_tag(s3_prefix, version, rocm_version, comp):
     prefix = f"{s3_prefix}/pre-release/"
     entries = _s3_list_prefixes(prefix)
 
-    pattern = re.compile(
+    ga_pat = re.compile(
+        rf"^{re.escape(version)}-{re.escape(rocm_version)}-(\d+)$"
+    )
+    rc_pat = re.compile(
         rf"^{re.escape(version)}-{re.escape(rocm_version)}rc(\d+)-(\d+)$"
     )
-    matches = []
-    for entry in entries:
-        m = pattern.match(entry)
+
+    # GA takes priority over any RC
+    ga = [e for e in entries if ga_pat.match(e)]
+    if ga:
+        tag = max(ga, key=lambda e: int(ga_pat.match(e).group(1)))
+        print(f"  Resolved (GA): {tag}", file=sys.stderr)
+        return tag
+
+    # No GA — pick highest RC, then highest build
+    rc = []
+    for e in entries:
+        m = rc_pat.match(e)
         if m:
-            matches.append((int(m.group(1)), int(m.group(2)), entry))
+            rc.append((int(m.group(1)), int(m.group(2)), e))
 
-    if not matches:
-        die(f"no pre-release found matching {version}-{rocm_version}* "
-            f"under {s3_prefix}/pre-release/")
+    if rc:
+        tag = max(rc)[2]
+        print(f"  Resolved (RC): {tag}", file=sys.stderr)
+        return tag
 
-    matches.sort(key=lambda x: (x[0], x[1]), reverse=True)
-    tag = matches[0][2]
-    print(f"  Resolved: {tag}", file=sys.stderr)
-    return tag
+    die(f"no pre-release found matching {version}-{rocm_version}* "
+        f"under {s3_prefix}/pre-release/")
 
 
 def load_config(config_path):
