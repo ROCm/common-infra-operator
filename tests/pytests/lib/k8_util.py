@@ -652,15 +652,24 @@ def k8_get_servicemonitor_cr(namespace : str) -> (int, str, str):
         return ret_code, list(filter(lambda x: x['metadata']['namespace'] == namespace, cr_list)), err
     return ret_code, cr_list, err
 
+def _detect_non_resource_field():
+    # kubernetes 37.x+ rebuilt models as pydantic BaseModel (extra="forbid").
+    # model_fields is present on all pydantic v2 BaseModel subclasses.
+    if hasattr(client.V1PolicyRule, 'model_fields'):
+        return 'non_resource_urls'          # kubernetes 37.x+
+    sig = inspect.signature(client.V1PolicyRule.__init__)
+    if 'non_resource_urls' in sig.parameters:
+        return 'non_resource_urls'          # kubernetes 36.x
+    return 'non_resource_ur_ls'             # kubernetes 29.x–35.x
+
+_NON_RESOURCE_FIELD = _detect_non_resource_field()
+
 @log_arguments
 def k8_create_rules_from_endpoint_list(endpoint_verbs : List):
     rules = []
     for url_verb in endpoint_verbs:
         url, verb = url_verb
-        try:
-            rules.append(client.V1PolicyRule(non_resource_ur_ls=[url], verbs=[verb]))
-        except TypeError:
-            rules.append(client.V1PolicyRule(non_resource_urls=[url], verbs=[verb]))
+        rules.append(client.V1PolicyRule(**{_NON_RESOURCE_FIELD: [url]}, verbs=[verb]))
     return rules
 
 @log_arguments

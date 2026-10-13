@@ -1176,7 +1176,7 @@ def generate_k8_workload_template(wl_template, workload_config, wl_cr_file):
     wl_cr = copy.deepcopy(wl_template)
     wl_cr['metadata']['namespace'] = workload_config.get('namespace', 'default')
     wl_cr['metadata']['name'] = workload_config.get('pod_name', 'pytorch-gpu-pod-1')
-    wl_cr['spec']['containers'][0]['resources']['limits']['amd.com/gpu'] = workload_config.get('num_gpu_reqd', 1)
+    wl_cr['spec']['containers'][0]['resources']['limits']['amd.com/gpu'] = str(workload_config.get('num_gpu_reqd', 1))
     wl_cr['spec']['nodeSelector']['kubernetes.io/hostname'] = workload_config.get('nodeSelector')
     for cntr in wl_cr['spec']['containers']:
         if len(cntr['args']) > 1:
