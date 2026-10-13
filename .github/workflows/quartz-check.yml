@@ -1,0 +1,111 @@
+name: Quartz Nightly Check
+
+# Checks ROCm nightly build readiness via Quartz status.json.
+# No tokens required — reads from public ROCm/Quartz repository.
+#
+# Callers gate their resolve/build jobs on the outputs:
+#   quartz-check:
+#     uses: ROCm/common-infra-operator/.github/workflows/quartz-check.yml@main
+#   resolve:
+#     needs: [read-version, quartz-check]
+#     if: always() && (needs.quartz-check.result == 'skipped' || needs.quartz-check.outputs.rocm_ready == 'true')
+
+on:
+  workflow_call:
+    outputs:
+      rocm_ready:
+        description: 'true if ROCm nightly build succeeded'
+        value: ${{ jobs.check.outputs.rocm_ready }}
+      rocm_version:
+        description: 'ROCm nightly version (e.g. 10.2.0a20261013)'
+        value: ${{ jobs.check.outputs.rocm_version }}
+      build_date:
+        description: 'ROCm nightly build date (YYYYMMDD)'
+        value: ${{ jobs.check.outputs.build_date }}
+      tarball_url:
+        description: 'ROCm nightly tarball base URL'
+        value: ${{ jobs.check.outputs.tarball_url }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check ROCm nightly readiness
+    runs-on: ubuntu-24.04
+    outputs:
+      rocm_ready: ${{ steps.check.outputs.ready }}
+      rocm_version: ${{ steps.check.outputs.rocm_version }}
+      build_date: ${{ steps.check.outputs.build_date }}
+      tarball_url: ${{ steps.check.outputs.tarball_url }}
+    steps:
+      - name: Check Quartz nightly status
+        id: check
+        run: |
+          set -euo pipefail
+          QUARTZ_BASE="https://raw.githubusercontent.com/ROCm/Quartz/main/nightly"
+
+          # Fetch latest.json — a pointer to the most recent status.json
+          LATEST_PTR=$(curl -fsSL "${QUARTZ_BASE}/latest.json" 2>/dev/null || echo "")
+          if [ -z "${LATEST_PTR}" ]; then
+            echo "::warning::Could not fetch Quartz latest.json — proceeding without gate"
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Fetch the actual status.json
+          STATUS=$(curl -fsSL "${QUARTZ_BASE}/${LATEST_PTR}" 2>/dev/null || echo "")
+          if [ -z "${STATUS}" ]; then
+            echo "::warning::Could not fetch Quartz ${LATEST_PTR} — proceeding without gate"
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BUILD_DATE=$(echo "${STATUS}" | jq -r '.build_date // empty')
+          ROCM_VERSION=$(echo "${STATUS}" | jq -r '.rocm_version // empty')
+          BUILD_STATUS=$(echo "${STATUS}" | jq -r '.summary.linux.rocm.build.status // empty')
+          COMPLETED_AT=$(echo "${STATUS}" | jq -r '.completed_at // empty')
+          TARBALL_URL=$(echo "${STATUS}" | jq -r '.summary.linux.urls.tarballs // empty')
+
+          echo "::notice::Quartz nightly: version=${ROCM_VERSION} date=${BUILD_DATE} status=${BUILD_STATUS} completed=${COMPLETED_AT}"
+
+          echo "build_date=${BUILD_DATE}" >> "$GITHUB_OUTPUT"
+          echo "rocm_version=${ROCM_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tarball_url=${TARBALL_URL}" >> "$GITHUB_OUTPUT"
+          echo "build_status=${BUILD_STATUS}" >> "$GITHUB_OUTPUT"
+
+          # Always verify tarball is actually available on the CDN
+          NIGHTLY_CDN="https://nightly.repo.amd.com/rocm/core/tarball"
+          TARBALL_NAME="therock-dist-linux-multiarch-${ROCM_VERSION}.tar.gz"
+          HTTP_CODE=$(curl -sI -o /dev/null -w "%{http_code}" "${NIGHTLY_CDN}/${TARBALL_NAME}" 2>/dev/null || echo "000")
+
+          echo "::notice::CDN check: ${TARBALL_NAME} → HTTP ${HTTP_CODE}"
+
+          if [ "${HTTP_CODE}" = "200" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "tarball_url=${NIGHTLY_CDN}/" >> "$GITHUB_OUTPUT"
+            echo "::notice::ROCm nightly tarball available (Quartz=${BUILD_STATUS}, CDN=200)"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::ROCm nightly tarball not available — Quartz=${BUILD_STATUS}, CDN HTTP=${HTTP_CODE}"
+          fi
+
+      - name: Summary
+        env:
+          READY: ${{ steps.check.outputs.ready }}
+          ROCM_VERSION: ${{ steps.check.outputs.rocm_version }}
+          BUILD_DATE: ${{ steps.check.outputs.build_date }}
+          TARBALL_URL: ${{ steps.check.outputs.tarball_url }}
+          BUILD_STATUS: ${{ steps.check.outputs.build_status }}
+        run: |
+          {
+            echo "## Quartz Nightly Check"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Ready | \`${READY}\` |"
+            echo "| ROCm version | \`${ROCM_VERSION:-N/A}\` |"
+            echo "| Build date | \`${BUILD_DATE:-N/A}\` |"
+            echo "| Quartz status | \`${BUILD_STATUS:-N/A}\` |"
+            echo "| Tarball URL | \`${TARBALL_URL:-N/A}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
