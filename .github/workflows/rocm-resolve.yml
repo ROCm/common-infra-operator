@@ -189,12 +189,12 @@ jobs:
           case "${TRIGGER_EVENT}" in
           schedule|workflow_dispatch)
             TARBALL_NAME=$(
-              curl -fsSL "${NIGHTLY_CDN_BASE}/" 2>/dev/null \
+              curl -fsSL "${NIGHTLY_CDN_BASE}/" \
               | grep -oP 'therock-dist-linux-multiarch-\d+\.\d+\.\d+a\d{8}\.tar\.gz' \
               | sed 's/.*a\([0-9]\{8\}\)\.tar\.gz/\1 &/' \
               | sort -rn \
               | awk 'NR==1{print $2}'
-            )
+            ) || TARBALL_NAME=""
             if [ -z "${TARBALL_NAME}" ]; then
               echo "::error::Could not detect latest nightly tarball from CDN index"
               exit 1
