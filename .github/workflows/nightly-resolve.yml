@@ -128,6 +128,7 @@ jobs:
       - name: Resolve parameters
         id: resolve
         env:
+          COMPONENT: ${{ inputs.component }}
           VERSION: ${{ inputs.version }}
           S3_COMPONENT_PREFIX: ${{ inputs.s3_component_prefix }}
         run: |
@@ -143,7 +144,7 @@ jobs:
           echo "suffix=${DATE}" >> "$GITHUB_OUTPUT"
           echo "scenario=nightly" >> "$GITHUB_OUTPUT"
 
-          echo "::notice::Component: ${{ inputs.component }}"
+          echo "::notice::Component: ${COMPONENT}"
           echo "::notice::Push tag: ${PUSH_TAG}"
           echo "::notice::S3 prefix: ${S3_PREFIX}"
           echo "::notice::Version: ${VERSION}"
@@ -154,11 +155,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           WORKFLOW_FILE: ${{ inputs.nightly_workflow_file }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           PREV_SHA=$(
-            gh api "repos/${{ github.repository }}/actions/workflows/${WORKFLOW_FILE}/runs?status=success&per_page=1" \
-              --jq '.workflow_runs[0].head_sha // ""' 2>/dev/null || echo ""
+            gh api "repos/${REPO}/actions/workflows/${WORKFLOW_FILE}/runs?status=success&per_page=1" \
+              --jq '.workflow_runs[0].head_sha // ""' || echo ""
           )
           echo "prev_sha=${PREV_SHA}" >> "$GITHUB_OUTPUT"
           if [ -n "${PREV_SHA}" ]; then
@@ -171,6 +173,7 @@ jobs:
         id: commit-log
         env:
           GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
           PREV_SHA: ${{ steps.prev-nightly.outputs.prev_sha }}
           CURRENT_SHA: ${{ inputs.trigger_sha }}
         run: |
@@ -180,9 +183,9 @@ jobs:
             echo "::notice::No new commits (first nightly or same SHA)"
           else
             LOG=$(
-              gh api "repos/${{ github.repository }}/compare/${PREV_SHA}...${CURRENT_SHA}" \
+              gh api "repos/${REPO}/compare/${PREV_SHA}...${CURRENT_SHA}" \
                 --jq '[.commits[-50:] | .[] | (.sha[:8] + " " + (.commit.message | split("\n") | first))] | join("\n")' \
-                2>/dev/null || echo ""
+                || echo ""
             )
             # GHA outputs can't have literal newlines — encode as %0A
             EOF_MARKER="COMMIT_LOG_$(date +%s)"
@@ -198,7 +201,7 @@ jobs:
         id: dedup
         if: inputs.trigger_event == 'schedule'
         continue-on-error: true
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           key: dedup-${{ inputs.component }}-${{ steps.resolve.outputs.date }}-${{ inputs.trigger_sha }}
           path: .dedup-marker
@@ -206,30 +209,40 @@ jobs:
 
       - name: Dedup summary
         if: steps.dedup.outputs.cache-hit == 'true' && inputs.force_rebuild != true
+        env:
+          COMPONENT: ${{ inputs.component }}
+          PUSH_TAG: ${{ steps.resolve.outputs.push_tag }}
+          TRIGGER_SHA: ${{ inputs.trigger_sha }}
         run: |
           {
-            echo "## ${{ inputs.component }} Nightly — Skipped (dedup)"
+            echo "## ${COMPONENT} Nightly — Skipped (dedup)"
             echo ""
-            echo "Build already succeeded for \`${{ steps.resolve.outputs.push_tag }}\` at SHA \`${{ inputs.trigger_sha }}\`."
+            echo "Build already succeeded for \`${PUSH_TAG}\` at SHA \`${TRIGGER_SHA}\`."
             echo "Use \`force_rebuild: true\` to override."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Resolve summary
         if: steps.dedup.outputs.cache-hit != 'true' || inputs.force_rebuild == true
         env:
+          COMPONENT: ${{ inputs.component }}
+          PUSH_TAG: ${{ steps.resolve.outputs.push_tag }}
+          RESOLVE_VERSION: ${{ steps.resolve.outputs.version }}
+          RESOLVE_DATE: ${{ steps.resolve.outputs.date }}
+          S3_PREFIX: ${{ steps.resolve.outputs.s3_prefix }}
+          PREV_NIGHTLY_SHA: ${{ steps.prev-nightly.outputs.prev_sha }}
           COMMIT_LOG: ${{ steps.commit-log.outputs.log }}
         run: |
           {
-            echo "## ${{ inputs.component }} Nightly — Resolved"
+            echo "## ${COMPONENT} Nightly — Resolved"
             echo ""
             echo "| | |"
             echo "|---|---|"
-            echo "| Component | \`${{ inputs.component }}\` |"
-            echo "| Push tag | \`${{ steps.resolve.outputs.push_tag }}\` |"
-            echo "| Version | \`${{ steps.resolve.outputs.version }}\` |"
-            echo "| Date | \`${{ steps.resolve.outputs.date }}\` |"
-            echo "| S3 prefix | \`${{ steps.resolve.outputs.s3_prefix }}\` |"
-            echo "| Previous nightly | \`${{ steps.prev-nightly.outputs.prev_sha || 'none' }}\` |"
+            echo "| Component | \`${COMPONENT}\` |"
+            echo "| Push tag | \`${PUSH_TAG}\` |"
+            echo "| Version | \`${RESOLVE_VERSION}\` |"
+            echo "| Date | \`${RESOLVE_DATE}\` |"
+            echo "| S3 prefix | \`${S3_PREFIX}\` |"
+            echo "| Previous nightly | \`${PREV_NIGHTLY_SHA:-none}\` |"
             echo "| Build needed | \`true\` |"
             if [ -n "${COMMIT_LOG}" ]; then
               echo ""
