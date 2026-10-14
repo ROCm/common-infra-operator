@@ -182,35 +182,68 @@ jobs:
           TRIGGER_SHA: ${{ inputs.trigger_sha }}
           INPUT_URL: ${{ inputs.input_tarball_url }}
           ROCM_VERSION: ${{ inputs.rocm_version }}
+        shell: bash {0}
         run: |
-          set -euo pipefail
           NIGHTLY_CDN_BASE="https://nightly.repo.amd.com/rocm/core/tarball"
 
           case "${TRIGGER_EVENT}" in
           schedule|workflow_dispatch)
-            TARBALL_NAME=$(
-              curl -fsSL "${NIGHTLY_CDN_BASE}/" \
-              | grep -oP 'therock-dist-linux-multiarch-\d+\.\d+\.\d+a\d{8}\.tar\.gz' \
-              | sed 's/.*a\([0-9]\{8\}\)\.tar\.gz/\1 &/' \
-              | sort -rn \
-              | awk 'NR==1{print $2}'
-            ) || TARBALL_NAME=""
-            if [ -z "${TARBALL_NAME}" ]; then
-              echo "::error::Could not detect latest nightly tarball from CDN index"
+            # Fetch CDN index
+            echo "::notice::Fetching CDN index: ${NIGHTLY_CDN_BASE}/"
+            CDN_RESPONSE=$(curl -fsSL "${NIGHTLY_CDN_BASE}/" 2>&1)
+            CDN_HTTP=$(curl -sS -o /dev/null -w "%{http_code}" "${NIGHTLY_CDN_BASE}/" 2>&1)
+            echo "::notice::CDN HTTP status: ${CDN_HTTP}, response length: ${#CDN_RESPONSE} bytes"
+            echo "--- CDN response start ---"
+            echo "${CDN_RESPONSE}"
+            echo "--- CDN response end ---"
+            if [ -z "${CDN_RESPONSE}" ] || [ "${CDN_HTTP}" != "200" ]; then
+              echo "::error::CDN fetch failed — HTTP ${CDN_HTTP}"
               exit 1
             fi
+
+            # Step 1: extract tarball filenames
+            TARBALLS=$(echo "${CDN_RESPONSE}" \
+              | grep -oP 'therock-dist-linux-multiarch-\d+\.\d+\.\d+a\d{8}\.tar\.gz')
+            TARBALL_COUNT=$(echo "${TARBALLS}" | grep -c . || echo 0)
+            echo "::notice::Step 1 (grep): found ${TARBALL_COUNT} tarball(s)"
+            if [ -z "${TARBALLS}" ]; then
+              echo "::error::No tarball filenames matched in CDN response"
+              exit 1
+            fi
+
+            # Step 2: prefix each with date for sorting
+            DATED=$(echo "${TARBALLS}" \
+              | sed 's/.*a\([0-9]\{8\}\)\.tar\.gz/\1 &/')
+            echo "::notice::Step 2 (sed): $(echo "${DATED}" | head -3 | tr '\n' ' ')"
+
+            # Step 3: pick latest by date
+            TARBALL_NAME=$(echo "${DATED}" | sort -rn | awk 'NR==1{print $2}')
+            echo "::notice::Step 3 (sort+pick): ${TARBALL_NAME:-EMPTY}"
+            if [ -z "${TARBALL_NAME}" ]; then
+              echo "::error::Could not select latest tarball from CDN index"
+              exit 1
+            fi
+
+            # Derive image tag and date from tarball name
             TARBALL_URL="${NIGHTLY_CDN_BASE}/${TARBALL_NAME}"
             IMAGE_TAG=$(echo "${TARBALL_NAME}" \
               | sed 's/therock-dist-linux-multiarch-//;s/\.tar\.gz//')
             DATE=$(echo "${IMAGE_TAG}" | grep -oP '(?<=a)\d{8}')
+            echo "::notice::Resolved: tarball=${TARBALL_NAME} image_tag=${IMAGE_TAG} date=${DATE:-EMPTY}"
+            if [ -z "${DATE}" ]; then
+              echo "::error::Could not extract date from image tag: ${IMAGE_TAG}"
+              exit 1
+            fi
+
             SUFFIX="${IMAGE_TAG}"
             ROCM_TARBALL_VERSION="${IMAGE_TAG}"
             if [ "${TRIGGER_EVENT}" = "workflow_dispatch" ]; then
-              EXISTING=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/nightly/${DATE}/" | head -1)
+              echo "::notice::Checking S3 for existing nightly at ${S3_COMPONENT_PREFIX}/nightly/${DATE}/"
+              EXISTING=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/nightly/${DATE}/" 2>&1)
               if [ -n "${EXISTING}" ]; then
-                LAST_N=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/nightly/${DATE}/" \
-                  | grep -oP 'rebuild-\K\d+' | sort -n | tail -1 || true)
+                LAST_N=$(echo "${EXISTING}" | grep -oP 'rebuild-\K\d+' | sort -n | tail -1)
                 N=$(( ${LAST_N:-0} + 1 ))
+                echo "::notice::Existing build found, using rebuild-${N}"
                 S3_PREFIX="${S3_COMPONENT_PREFIX}/nightly/${DATE}/rebuild-${N}"
               else
                 S3_PREFIX="${S3_COMPONENT_PREFIX}/nightly/${DATE}"
@@ -240,9 +273,11 @@ jobs:
             else
               TARBALL_URL="https://stable.repo.amd.com/rocm/core/tarball/therock-dist-linux-multiarch-${ROCM_VERSION}.tar.gz"
             fi
-            LISTING=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/pre-release/" || true)
-            LAST_N=$(echo "${LISTING}" | grep -oP "${VERSION}-${ROCM_VERSION}-\K\d+" | sort -n | tail -1 || true)
+            echo "::notice::Checking S3 for existing pre-release builds at ${S3_COMPONENT_PREFIX}/pre-release/"
+            LISTING=$(aws s3 ls "s3://${S3_BUCKET}/${S3_COMPONENT_PREFIX}/pre-release/")
+            LAST_N=$(echo "${LISTING}" | grep -oP "${VERSION}-${ROCM_VERSION}-\K\d+" | sort -n | tail -1)
             N=$(( ${LAST_N:-0} + 1 ))
+            echo "::notice::Pre-release build number: ${N} (last: ${LAST_N:-none})"
             SUFFIX="${ROCM_VERSION}-${N}"
             IMAGE_TAG="${VERSION}-${SUFFIX}"
             ROCM_TARBALL_VERSION="${ROCM_VERSION}"
@@ -256,12 +291,32 @@ jobs:
             ;;
           esac
 
-          for var in TARBALL_URL IMAGE_TAG VERSION; do
+          # Final validation — fail if any required output is empty
+          RESOLVE_OK=true
+          for var in TARBALL_URL IMAGE_TAG VERSION SUFFIX SCENARIO ROCM_TARBALL_VERSION; do
             if [ -z "${!var}" ]; then
               echo "::error::${var} is empty after resolve"
-              exit 1
+              RESOLVE_OK=false
             fi
           done
+          # S3_PREFIX is allowed to be empty for pull_request
+          if [ "${SCENARIO}" != "pull_request" ] && [ -z "${S3_PREFIX}" ]; then
+            echo "::error::S3_PREFIX is empty for ${SCENARIO} build"
+            RESOLVE_OK=false
+          fi
+
+          echo "::notice::Component: ${COMPONENT}"
+          echo "::notice::Scenario: ${SCENARIO}"
+          echo "::notice::ROCm tarball: ${TARBALL_URL}"
+          echo "::notice::Image tag: ${IMAGE_TAG}"
+          echo "::notice::Version: ${VERSION}"
+          echo "::notice::Suffix: ${SUFFIX}"
+          echo "::notice::S3 prefix: ${S3_PREFIX}"
+
+          if [ "${RESOLVE_OK}" != "true" ]; then
+            echo "::error::Resolve failed — see errors above"
+            exit 1
+          fi
 
           echo "rocm_tarball_url=${TARBALL_URL}"           >> "$GITHUB_OUTPUT"
           echo "image_tag=${IMAGE_TAG}"                   >> "$GITHUB_OUTPUT"
@@ -271,14 +326,6 @@ jobs:
           echo "suffix=${SUFFIX}"                         >> "$GITHUB_OUTPUT"
           echo "scenario=${SCENARIO}"                     >> "$GITHUB_OUTPUT"
           echo "nightly_tag=${DATE:-}"                    >> "$GITHUB_OUTPUT"
-
-          echo "::notice::Component: ${COMPONENT}"
-          echo "::notice::ROCm tarball: ${TARBALL_URL}"
-          echo "::notice::Image tag: ${IMAGE_TAG}"
-          echo "::notice::Version: ${VERSION}"
-          echo "::notice::Suffix: ${SUFFIX}"
-          echo "::notice::Scenario: ${SCENARIO}"
-          echo "::notice::S3 prefix: ${S3_PREFIX}"
 
       - name: Check dedup cache
         id: dedup
