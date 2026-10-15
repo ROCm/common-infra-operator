@@ -899,8 +899,8 @@ def k8_create_pre_test_runner_job(namespace: str, images: dict, sa_name: str, de
         image_pull_policy="IfNotPresent",
         volume_mounts=init_container_volume_mounts,
         resources=client.V1ResourceRequirements(
-            requests={gpu_type: init_cap},
-            limits={gpu_type: init_cap}
+            requests={gpu_type: str(init_cap)},
+            limits={gpu_type: str(init_cap)}
         ),
         env=[
             client.V1EnvVar(name="TEST_TRIGGER", value="PRE_START_JOB_CHECK"),
@@ -1224,7 +1224,7 @@ def k8_create_test_runner_job(namespace : str, images : dict, worker : str, sa_n
         # Note: Custom resources like 'amd.com/gpu' are strings in the limits dictionary.
         resources = client.V1ResourceRequirements(
             limits={
-                gpu_type: init_cap  # Requesting 8 GPUs
+                gpu_type: str(init_cap)
             }
         )
         # Define containers
@@ -1285,35 +1285,33 @@ def k8_create_test_runner_job(namespace : str, images : dict, worker : str, sa_n
         )
         sanitized_dict = api_client.sanitize_for_serialization(job)
         try:
-            # Create the Job in the specified namespace
             api_response = batch_v1_api.create_namespaced_job(namespace=namespace, body=job)
             Logger.info(f"Job created successfully: {api_response.metadata.name}")
         except client.ApiException as e:
-            assert True, f"Error creating Job: {e}"
+            Logger.error(f"Failed to create Job: {e}")
+            return -1
     else:
-            # Define the Job template spec for the CronJob
         job_template_spec = client.V1JobTemplateSpec(spec=job_spec)
         cronjob_spec = client.V1CronJobSpec(
-            schedule=f"{minute} * * * *", # Daily at midnight
+            schedule=f"{minute} * * * *",
             job_template=job_template_spec
         )
-
-        # Create the V1CronJob object
         cron_job = client.V1CronJob(
-            api_version="batch/v1", # Changed apiVersion for CronJob
-            kind="CronJob",        # Changed kind to CronJob
+            api_version="batch/v1",
+            kind="CronJob",
             metadata=job_metadata,
             spec=cronjob_spec,
         )
         sanitized_dict = api_client.sanitize_for_serialization(cron_job)
         try:
-            # Create the Job in the specified namespace
             api_response = batch_v1_api.create_namespaced_cron_job(namespace=namespace, body=cron_job)
-            Logger.info(f"Job created successfully: {api_response.metadata.name}")
+            Logger.info(f"CronJob created successfully: {api_response.metadata.name}")
         except client.ApiException as e:
-            assert True, f"Error creating Job: {e}"
+            Logger.error(f"Failed to create CronJob: {e}")
+            return -1
     yaml_output = yaml.dump(sanitized_dict, default_flow_style=False)
     Logger.info(pprint.pprint(yaml_output))
+    return 0
 
 
 @log_arguments

@@ -73,7 +73,7 @@ import lib.metric_util as metric_util
 import lib.amdgpu as amdgpu_util
 from lib.util import K8Helper
 from kubernetes import client, config, utils
-from test_test_runner import update_test_runner_configmap, create_configmap, update_test_runner_image, metrics_fields
+import test_test_runner
 
 Logger = logging.getLogger("k8.test_config_manager")
 LogPrettyPrinter = pprint.PrettyPrinter(indent = 2)
@@ -1709,10 +1709,10 @@ def test_partitioning_test_runner(gpu_cluster, deviceconfig_install, environment
     configmap = {}
     for node in gpu_nodes:
         worker = k8_util.k8_get_node_hostname(node)
-        update_test_runner_configmap(recipe, worker, configmap, framework)
+        test_test_runner.update_test_runner_configmap(recipe, worker, configmap, framework)
 
-    configmap_name = create_configmap(request, deviceconfig_install, environment, framework, configmap)
-    update_test_runner_image(deviceconfig_install, environment, framework, configmap_name)
+    configmap_name = test_test_runner.create_configmap(request, deviceconfig_install, environment, framework, configmap)
+    test_test_runner.update_test_runner_config(deviceconfig_install, environment, framework, configmap_name)
 
     run_partition_test_scenario(gpu_cluster, environment, request, profile, workload = False)
 
