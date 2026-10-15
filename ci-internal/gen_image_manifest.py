@@ -34,6 +34,7 @@ import copy
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -111,16 +112,23 @@ def die(msg):
 # CloudFront S3 listing helpers
 # ---------------------------------------------------------------------------
 
-def _s3_list_prefixes(prefix):
+def _s3_list_prefixes(prefix, retries=3, backoff=5):
     """List subdirectory names under a given S3 prefix via CloudFront XML listing."""
     url = f"{CLOUDFRONT_BASE}/?list-type=2&delimiter=/&prefix={prefix}"
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "gen-image-manifest/2.0"})
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            body = resp.read().decode("utf-8")
-    except (urllib.error.HTTPError, urllib.error.URLError, OSError) as exc:
-        print(f"  WARNING: CloudFront listing failed for {prefix}: {exc}", file=sys.stderr)
-        return []
+    for attempt in range(retries):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "gen-image-manifest/2.0"})
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                body = resp.read().decode("utf-8")
+            break
+        except (urllib.error.HTTPError, urllib.error.URLError, OSError) as exc:
+            if attempt < retries - 1:
+                wait = backoff * (attempt + 1)
+                print(f"  Retry {attempt + 1}/{retries} in {wait}s for {prefix}: {exc}", file=sys.stderr)
+                time.sleep(wait)
+            else:
+                print(f"  WARNING: CloudFront listing failed for {prefix}: {exc}", file=sys.stderr)
+                return []
 
     root = ET.fromstring(body)
     ns = ""
@@ -378,24 +386,30 @@ def download_artifacts(config, tags, download_dir, dry_run=False):
     return downloads
 
 
-def _download_file(url, local_path):
-    """Download a single file. Returns True on success."""
+def _download_file(url, local_path, retries=3, backoff=5):
+    """Download a single file with retry. Returns True on success."""
     print(f"  downloading {os.path.basename(local_path)} ...", file=sys.stderr, end=" ")
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "gen-image-manifest/2.0"})
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            with open(local_path, "wb") as f:
-                while True:
-                    chunk = resp.read(65536)
-                    if not chunk:
-                        break
-                    f.write(chunk)
-        size_kb = os.path.getsize(local_path) / 1024
-        print(f"ok ({size_kb:.0f} KB)", file=sys.stderr)
-        return True
-    except (urllib.error.HTTPError, urllib.error.URLError, OSError) as exc:
-        print(f"FAILED ({exc})", file=sys.stderr)
-        return False
+    for attempt in range(retries):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "gen-image-manifest/2.0"})
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                with open(local_path, "wb") as f:
+                    while True:
+                        chunk = resp.read(65536)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+            size_kb = os.path.getsize(local_path) / 1024
+            print(f"ok ({size_kb:.0f} KB)", file=sys.stderr)
+            return True
+        except (urllib.error.HTTPError, urllib.error.URLError, OSError) as exc:
+            if attempt < retries - 1:
+                wait = backoff * (attempt + 1)
+                print(f"retry {attempt + 1}/{retries} in {wait}s...", file=sys.stderr, end=" ")
+                time.sleep(wait)
+            else:
+                print(f"FAILED ({exc})", file=sys.stderr)
+                return False
 
 
 def merge_and_write(baseline, config, tags, downloads, output_path):

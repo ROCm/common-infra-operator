@@ -62,6 +62,67 @@ metrics_fields = {
 
 debug_on_failure = K8Helper.triage
 
+_RECIPES = {
+    "test_deviceconfig_test_runner_deploy": {
+        "argnames": ["test_framework"],
+        "params": [("rvs",), ("agfhc",)],
+    },
+    "test_deviceconfig_test_runner_disable": {
+        "argnames": ["test_framework"],
+        "params": [("rvs",), ("agfhc",)],
+    },
+    "test_deviceconfig_testrunner_disable_exporter": {
+        "argnames": ["test_framework"],
+        "params": [("rvs",), ("agfhc",)],
+    },
+    "test_deviceconfig_unhealthy": {
+        "argnames": ["test_framework", "recipe"],
+        "params": [("rvs", "iet_stress"), ("agfhc", "gfx_lvl1")],
+    },
+    "test_workload_running_make_node_unhealthy": {
+        "argnames": ["test_framework", "recipe"],
+        "params": [("rvs", "babel"), ("rvs", "babel_single"), ("agfhc", "xgmi_lvl1")],
+    },
+    "test_update_metric_exporter_and_test_runner": {
+        "argnames": ["test_framework", "recipe"],
+        "params": [("rvs", "gst_single"), ("agfhc", "dma_lvl1")],
+    },
+    "test_manual_job": {
+        "argnames": ["test_framework", "recipe", "schedule", "healthy"],
+        "params": [
+            ("rvs", "gst_single",    True,  True),
+            ("rvs", "iet_stress",    False, True),
+            ("rvs", "babel",         False, False),
+            ("rvs", "babel_single",  False, False),
+            ("agfhc", "dma_lvl1",   False, False),
+            ("agfhc", "dma_lvl2",   False, True),
+            ("agfhc", "gfx_lvl1",   True,  True),
+        ],
+    },
+    "test_pre_job": {
+        "argnames": ["test_framework", "recipe", "healthy"],
+        "params": [
+            ("rvs",   "babel",       False),
+            ("rvs",   "babel",       True),
+            ("rvs",   "babel_single",False),
+            ("rvs",   "babel_single",True),
+            ("agfhc", "all_lvl1",   True),
+            ("agfhc", "all_lvl2",   False),
+        ],
+    },
+}
+
+
+def pytest_generate_tests(metafunc):
+    spec = _RECIPES.get(metafunc.function.__name__)
+    if spec is None:
+        return
+    metafunc.parametrize(
+        spec["argnames"],
+        spec["params"],
+        indirect=["test_framework"],
+    )
+
 def verify_events(environment, before, after):
     global Logger
 
@@ -83,18 +144,50 @@ def verify_events(environment, before, after):
             Logger.info(f"{pprint.pformat(event.message)}")
 
 @pytest.fixture(autouse=True, scope="module")
-def skip_module(gpu_cluster, environment):
+def skip_module(environment):
     if environment.gpu_operator_version in ["v1.0.0", "v1.1.0"]:
         pytest.skip(f"Skipping test-runner for current version {environment.gpu_operator_version}")
-    for node in gpu_cluster.cluster_nodes:
-        if node.device_id:
-            tr_support = amdgpu_util.get_test_runner_support(node.device_id)
-            if not tr_support.get("rvs", False) and not tr_support.get("agfhc", False):
-                pytest.skip(f"Skipping test-runner module — neither RVS nor AGFHC supported on {node.gpu_series}")
     return
 
+
 @pytest.fixture(scope="module")
-def deviceconfig_install(gpu_cluster, images, gpu_operator_install, environment):
+def test_framework(request, images, gpu_cluster):
+    """Module-scoped fixture driven by pytest_generate_tests indirect parametrization.
+
+    Three skip gates (checked in order):
+      1. TEST_RUNNER_FRAMEWORKS env var — CI jobs opt in/out without a CLI option
+      2. Image manifest — AGFHC image absent → skip AGFHC suite automatically
+      3. Hardware support — amdgpu-features.json runtime check
+    Returns the framework string ("rvs" or "agfhc") consumed by tests and
+    deviceconfig_install.
+    """
+    framework = request.param  # "rvs" or "agfhc"
+
+    # Gate 1: env var selection (e.g. TEST_RUNNER_FRAMEWORKS=rvs or rvs,agfhc)
+    allowed_env = os.environ.get("TEST_RUNNER_FRAMEWORKS", "").strip().lower()
+    if allowed_env:
+        allowed = {f.strip() for f in allowed_env.split(",") if f.strip()}
+        if framework not in allowed:
+            pytest.skip(
+                f"test_framework={framework!r} excluded by TEST_RUNNER_FRAMEWORKS={allowed_env!r}"
+            )
+
+    # Gate 2: image manifest presence
+    if framework == "agfhc" and "testRunnerAgfhc.image.repository" not in images:
+        pytest.skip("AGFHC test-runner image not present in image manifest")
+
+    # Gate 3: hardware support
+    if not any(
+        amdgpu_util.get_test_runner_support(node.device_id).get(framework, False)
+        for node in gpu_cluster.cluster_nodes
+        if node.device_id
+    ):
+        pytest.skip(f"{framework.upper()} test-runner not supported on this cluster")
+
+    return framework
+
+@pytest.fixture(scope="module")
+def deviceconfig_install(test_framework, gpu_cluster, images, gpu_operator_install, environment):
     global Logger
 
     # cleanup - remove any deviceconfigs and then gpu-operator helm-chart
@@ -117,9 +210,14 @@ def deviceconfig_install(gpu_cluster, images, gpu_operator_install, environment)
             'driver.enable' : True,
             'devicePlugin.enableNodeLabeller' : False,
             'metricsExporter.enable' : True,
-            'testRunner.enable' : True,
         }
+    if test_framework == "rvs":
+        test_config['testRunner.enable'] = True
+    else:
+        test_config['testRunnerAgfhc.enable'] = True
     test_config.update(images)
+
+    tr_options = {'test_runner_framework': test_framework}
 
     test_cfg_map = spec_util.build_deviceconfig_cr_template(test_config, gpu_nodes, 'test_runner', environment.amdgpu_driver_spec)
     exporter_port_map = {}
@@ -150,7 +248,7 @@ def deviceconfig_install(gpu_cluster, images, gpu_operator_install, environment)
         tcfg['metricsExporter.config'] = exporter_cm_name
 
     for spec_name, tcfg in test_cfg_map.items():
-        cr_spec = spec_util.generate_k8_deviceconfig_cr(environment.gpu_operator_version, tcfg)
+        cr_spec = spec_util.generate_k8_deviceconfig_cr(environment.gpu_operator_version, tcfg, options=tr_options)
         ret_code, ret_stdout, ret_stderr = k8_util.k8_create_deviceconfig_cr(cr_spec)
         debug_on_failure(environment, (ret_code == 0), f"Failed to create deviceconfig, stderr: {ret_stderr}")
         devicecfg_list.append(tcfg['metadata.name'])
@@ -177,12 +275,20 @@ def deviceconfig_install(gpu_cluster, images, gpu_operator_install, environment)
     ]
     failed_testrunner_pods = k8_util.k8_check_pod_running(environment.gpu_operator_namespace, testrunner_pods)
     if not failed_testrunner_pods:
-        K8Helper.capture_testrunner_versions(
-            environment.gpu_operator_namespace,
-            "RVS",
-            "testRunner.image",
-            timeout_seconds=30,
-        )
+        if test_framework == "rvs":
+            K8Helper.capture_testrunner_versions(
+                environment.gpu_operator_namespace,
+                "RVS",
+                "testRunner.image",
+                timeout_seconds=30,
+            )
+        else:
+            K8Helper.capture_testrunner_versions(
+                environment.gpu_operator_namespace,
+                "AGFHC",
+                "testRunnerAgfhc.image",
+                timeout_seconds=30,
+            )
 
     devcfg_info = DeviceConfigCRInfo()
     setattr(devcfg_info, "test_cfg_map", test_cfg_map)
@@ -198,7 +304,7 @@ def deviceconfig_install(gpu_cluster, images, gpu_operator_install, environment)
     return
 
 @pytest.mark.level1
-def test_deviceconfig_test_runner_deploy(deviceconfig_install, environment):
+def test_deviceconfig_test_runner_deploy(test_framework, deviceconfig_install, environment):
     global Logger
     ret_code, gpu_nodes = k8_util.k8_get_gpu_nodes()
     debug_on_failure(environment, (ret_code == 0), "Error while getting gpu-nodes from k8-cluster")
@@ -228,16 +334,19 @@ def test_deviceconfig_test_runner_deploy(deviceconfig_install, environment):
     '''
 
 @pytest.mark.level1
-def test_deviceconfig_test_runner_disable(deviceconfig_install, environment):
+def test_deviceconfig_test_runner_disable(test_framework, deviceconfig_install, environment):
     global Logger
     ret_code, gpu_nodes = k8_util.k8_get_gpu_nodes()
     debug_on_failure(environment, (ret_code == 0), "Error while getting gpu-nodes from k8-cluster")
     debug_on_failure(environment, (len(gpu_nodes) > 0), "No nodes with AMD/GPU found in the cluster")
 
+    enable_key = 'testRunner.enable' if test_framework == "rvs" else 'testRunnerAgfhc.enable'
+    tr_options = {'test_runner_framework': test_framework}
+
     # disable test-runner
     for spec_name, tcfg in deviceconfig_install.test_cfg_map.items():
-        tcfg['testRunner.enable'] = False
-        cr_spec = spec_util.generate_k8_deviceconfig_cr(environment.gpu_operator_version, tcfg)
+        tcfg[enable_key] = False
+        cr_spec = spec_util.generate_k8_deviceconfig_cr(environment.gpu_operator_version, tcfg, options=tr_options)
         ret_code, ret_stdout, ret_stderr = k8_util.k8_modify_deviceconfig_cr(cr_spec)
         debug_on_failure(environment, (ret_code == 0), "Failed to modify deviceconfig CR")
 
@@ -257,8 +366,8 @@ def test_deviceconfig_test_runner_disable(deviceconfig_install, environment):
 
     # re-enable test-runner
     for spec_name, tcfg in deviceconfig_install.test_cfg_map.items():
-        tcfg['testRunner.enable'] = True
-        cr_spec = spec_util.generate_k8_deviceconfig_cr(environment.gpu_operator_version, tcfg)
+        tcfg[enable_key] = True
+        cr_spec = spec_util.generate_k8_deviceconfig_cr(environment.gpu_operator_version, tcfg, options=tr_options)
         ret_code, ret_stdout, ret_stderr = k8_util.k8_modify_deviceconfig_cr(cr_spec)
         debug_on_failure(environment, (ret_code == 0), "Failed to modify deviceconfig CR")
 
@@ -272,16 +381,18 @@ def test_deviceconfig_test_runner_disable(deviceconfig_install, environment):
     debug_on_failure(environment, (not failed_pods), f"One or more pods are not ready - {failed_pods}")
 
 @pytest.mark.level1
-def test_deviceconfig_testrunner_disable_exporter(deviceconfig_install, environment):
+def test_deviceconfig_testrunner_disable_exporter(test_framework, deviceconfig_install, environment):
     global Logger
     ret_code, gpu_nodes = k8_util.k8_get_gpu_nodes()
     debug_on_failure(environment, (ret_code == 0), "Error while getting gpu-nodes from k8-cluster")
     debug_on_failure(environment, (len(gpu_nodes) > 0), "No nodes with AMD/GPU found in the cluster")
 
+    tr_options = {'test_runner_framework': test_framework}
+
     # disable exporter and check for metrics
     for spec_name, tcfg in deviceconfig_install.test_cfg_map.items():
         tcfg['metricsExporter.enable'] = False
-        cr_spec = spec_util.generate_k8_deviceconfig_cr(environment.gpu_operator_version, tcfg)
+        cr_spec = spec_util.generate_k8_deviceconfig_cr(environment.gpu_operator_version, tcfg, options=tr_options)
         ret_code, ret_stdout, ret_stderr = k8_util.k8_modify_deviceconfig_cr(cr_spec)
         debug_on_failure(environment, (ret_code == 0), "Failed to modify deviceconfig CR")
 
@@ -302,7 +413,7 @@ def test_deviceconfig_testrunner_disable_exporter(deviceconfig_install, environm
     # Re enable exporter and check for test-runner
     for spec_name, tcfg in deviceconfig_install.test_cfg_map.items():
         tcfg['metricsExporter.enable'] = True
-        cr_spec = spec_util.generate_k8_deviceconfig_cr(environment.gpu_operator_version, tcfg)
+        cr_spec = spec_util.generate_k8_deviceconfig_cr(environment.gpu_operator_version, tcfg, options=tr_options)
         ret_code, ret_stdout, ret_stderr = k8_util.k8_modify_deviceconfig_cr(cr_spec)
         debug_on_failure(environment, (ret_code == 0), "Failed to modify deviceconfig CR")
 
@@ -331,17 +442,21 @@ def wait_for_pod(environment, namespace, cmd_list, pod_str, result):
     debug_on_failure(environment, (resp_stdout is not None), f"Failed to collect response from {cmd_list} from {pod_str}")
     debug_on_failure(environment, result in resp_stdout, f"can't find {result} in {pod_name} output {resp_stdout}")
 
-def verify_gpu_capacity_status(environment, worker, gpus):
-    i = 0
-    while i < 10:
+def verify_gpu_capacity_status(environment, worker, expected_unhealthy=0):
+    """Poll until the expected number of GPUs are marked unhealthy.
+
+    Unhealthy count = capacity - allocatable.  0 means all GPUs are healthy.
+    """
+    for attempt in range(10):
         cap, alloc = k8_util.k8_get_node_gpu_capacity(worker)
-        Logger.info(f"GPU capacity check: {worker} capacity={cap} allocatable={alloc} (expect cap == alloc + {gpus})")
-        if cap == alloc + gpus:
+        unhealthy = cap - alloc
+        Logger.info(f"GPU capacity check: {worker} capacity={cap} allocatable={alloc} unhealthy={unhealthy} (expect {expected_unhealthy})")
+        if unhealthy == expected_unhealthy:
             return
         time.sleep(10)
-        i = i + 1
     debug_on_failure(environment, False,
-                     f"GPU capacity mismatch after 100s: {worker} capacity={cap} allocatable={alloc} (expected alloc + {gpus} = {cap})")
+                     f"GPU capacity mismatch after 100s: {worker} capacity={cap} allocatable={alloc} "
+                     f"unhealthy={unhealthy} (expected {expected_unhealthy})")
 
 
 def update_metrics_exporter_configmap(config_map):
@@ -462,87 +577,26 @@ def update_metrics_exporter(deviceconfig_install, environment, configmap_name):
         ret_code, ret_stdout, ret_stderr = k8_util.k8_modify_deviceconfig_cr(cr_spec)
         debug_on_failure(environment, (ret_code == 0), "Failed to modify deviceconfig CR")
 
-def update_test_runner_image(deviceconfig_install, environment, framework, configmap_name):
-    # re-configure test-runner
+def update_test_runner_config(deviceconfig_install, environment, framework, configmap_name):
+    """Update the DeviceConfig CR to reference a new test-runner configmap.
+
+    framework: "rvs" or "agfhc" (lowercase). Image is already deployed by
+    deviceconfig_install; this call only updates the config reference.
+    """
+    tr_options = {'test_runner_framework': framework}
     for spec_name, tcfg in deviceconfig_install.test_cfg_map.items():
-        skip_sections = {}
-        # Enable metrics exporter - required for metricsclient commands in wait_for_pod()
-        tcfg['metricsExporter.enable'] = True
-        if framework == "RVS":
-            skip_sections['testRunnerAgfhc'] = True
+        if framework == "rvs":
             tcfg['testRunner.enable'] = True
             tcfg['testRunner.config'] = configmap_name
-        elif framework == "AGFHC":
-            skip_sections['testRunner'] = True
+        else:
             tcfg['testRunnerAgfhc.enable'] = True
             tcfg['testRunnerAgfhc.config'] = configmap_name
-        cr_spec = spec_util.generate_k8_deviceconfig_cr(environment.gpu_operator_version, tcfg, skip_sections)
+        cr_spec = spec_util.generate_k8_deviceconfig_cr(environment.gpu_operator_version, tcfg, options=tr_options)
         ret_code, ret_stdout, ret_stderr = k8_util.k8_modify_deviceconfig_cr(cr_spec)
         debug_on_failure(environment, (ret_code == 0), "Failed to modify deviceconfig CR")
 
-    if framework == "AGFHC" and f"testRunnerAgfhc.image.agfhc_version" not in getattr(pytest, "_image_info", {}):
-        K8Helper.capture_testrunner_versions(
-            environment.gpu_operator_namespace,
-            "AGFHC",
-            "testRunnerAgfhc.image",
-        )
-
-
-def swap_recipe(request, gpu_cluster, deviceconfig_install, environment, framework, trigger="AUTO_UNHEALTHY_GPU_WATCH"):
-    ret_code, gpu_nodes = k8_util.k8_get_gpu_nodes()
-    debug_on_failure(environment, (ret_code == 0), "Error while getting gpu-nodes from k8-cluster")
-    debug_on_failure(environment, (len(gpu_nodes) > 0), "No nodes with AMD/GPU found in the cluster")
-    gpu_node = gpu_nodes[0]
-    worker = k8_util.k8_get_node_hostname(gpu_node)
-
-    Logger.info(f"Test runner worker logs\n===================\n")
-    ret_code, stdout, stderr = k8_util.k8_get_pod_logs("test-runner", environment.gpu_operator_namespace)
-    Logger.info(f"Test runner worker logs\n==================={stdout}\n")
-    cluster_node = gpu_cluster.find_node_by_ip(k8_util.k8_get_node_address(gpu_node))
-    tr_support = amdgpu_util.get_test_runner_support(cluster_node.device_id)
-    if not tr_support.get("agfhc", False) and not tr_support.get("rvs", False):
-        pytest.skip(f"skipping test-runner swap — no frameworks supported on {cluster_node.gpu_series}")
-    elif not tr_support.get("agfhc", False):
-        new_framework = "RVS"
-        rvs_recipes = tr_support.get("rvs_recipes", ["pebb_single"])
-        new_recipe = rvs_recipes[0] if rvs_recipes else "pebb_single"
-    elif framework == "AGFHC":
-        new_framework = "RVS"
-        rvs_recipes = tr_support.get("rvs_recipes", [])
-        new_recipe = rvs_recipes[0] if rvs_recipes else "babel"
-    else:
-        new_framework = "AGFHC"
-        new_recipe = "hbm_lvl1"
-
-    configmap = {}
-    before_events = k8_util.k8_get_events(namespace=environment.gpu_operator_namespace)
-    update_test_runner_configmap(new_recipe, worker, configmap, new_framework, trigger)
-    configmap_name = create_configmap(request, deviceconfig_install, environment, new_framework, configmap)
-    update_test_runner_image(deviceconfig_install, environment, new_framework, configmap_name)
-    if new_framework != framework:
-        verify_logs(environment,
-                    [
-                        "Version :",
-                        "BuildDate:",
-                        "GitCommit:",
-                    ])
-
-    time.sleep(50)
-    after_events = k8_util.k8_get_events(namespace=environment.gpu_operator_namespace)
-    verify_events(environment, before_events, after_events)
-    '''
-    test-runner 2025/08/18 16:16:59 types.go:192: writing logs babel [iteration=1]:
-    test-runner 2025/08/18 16:16:59 testrunner.go:856: Trigger: {trigger} Test: babel GPU Indexes: [0] completed. Result: [0xc000ab5280]
-    '''
-    return new_framework, new_recipe
-
-#@pytest.mark.parametrize("recipe", ["babel", "gpup_single", "gst_single", "iet_single"])
 @pytest.mark.level2
-@pytest.mark.parametrize("framework, recipe", [
-    ("RVS", "iet_stress"),
-    ("AGFHC", "gfx_lvl1")
-])
-def test_deviceconfig_unhealthy(request, gpu_cluster, deviceconfig_install, environment, framework, recipe):
+def test_deviceconfig_unhealthy(request, gpu_cluster, test_framework, deviceconfig_install, environment, recipe):
     namespace = environment.gpu_operator_namespace
     global Logger
     global LogPrettyPrinter
@@ -555,24 +609,22 @@ def test_deviceconfig_unhealthy(request, gpu_cluster, deviceconfig_install, envi
     gpu_node = gpu_nodes[0]
     cluster_node = gpu_cluster.find_node_by_ip(k8_util.k8_get_node_address(gpu_node))
     tr_support = amdgpu_util.get_test_runner_support(cluster_node.device_id)
-    if framework == "AGFHC" and not tr_support.get("agfhc", False):
-        pytest.skip(f"skipping AGFHC tests — not supported on {cluster_node.gpu_series}")
-    if framework == "RVS" and not tr_support.get("rvs", False):
-        pytest.skip(f"skipping RVS tests — not supported on {cluster_node.gpu_series}")
-    if framework == "RVS" and recipe not in tr_support.get("rvs_recipes", []):
+    if test_framework == "rvs" and recipe not in tr_support.get("rvs_recipes", []):
         if recipe == "iet_stress" and "iet_single" in tr_support.get("rvs_recipes", []):
             recipe = "iet_single"
         else:
             pytest.skip(f"RVS recipe '{recipe}' not supported on {cluster_node.gpu_series}")
+    if test_framework == "agfhc" and recipe not in tr_support.get("agfhc_recipes", []):
+        pytest.skip(f"AGFHC recipe '{recipe}' not supported on {cluster_node.gpu_series}")
     worker = k8_util.k8_get_node_hostname(gpu_node)
     init_cap, alloc = k8_util.k8_get_node_gpu_capacity(worker)
 
     before_events = k8_util.k8_get_events(namespace=environment.gpu_operator_namespace)
 
     testrunner_cfg = {}
-    update_test_runner_configmap(recipe, worker, testrunner_cfg, framework)
-    testrunner_cm = create_configmap(request, deviceconfig_install, environment, framework, testrunner_cfg)
-    update_test_runner_image(deviceconfig_install, environment, framework, testrunner_cm)
+    update_test_runner_configmap(recipe, worker, testrunner_cfg, test_framework.upper())
+    testrunner_cm = create_configmap(request, deviceconfig_install, environment, test_framework, testrunner_cfg)
+    update_test_runner_config(deviceconfig_install, environment, test_framework, testrunner_cm)
 
     sample_size = random.randint(1,len(metrics_fields.keys())-1)
     error_list = random.sample(sorted(metrics_fields.keys()), sample_size)
@@ -595,7 +647,7 @@ def test_deviceconfig_unhealthy(request, gpu_cluster, deviceconfig_install, envi
 
     local_workload_ctxts = []
 
-    verify_gpu_capacity_status(environment, worker, 1)
+    verify_gpu_capacity_status(environment, worker, expected_unhealthy=1)
     params = {
         "node_name" : worker,
         "num_gpu_reqd" : init_cap,
@@ -656,13 +708,7 @@ def test_deviceconfig_unhealthy(request, gpu_cluster, deviceconfig_install, envi
     verify_events(environment, before_events, after_events)
 
 @pytest.mark.level2
-@pytest.mark.parametrize("framework, recipe", [
-    ("RVS", "babel"),
-    ("RVS", "babel_single"),
-    ("AGFHC", "xgmi_lvl1")
-])
-def test_workload_running_make_node_unhealthy(request, gpu_cluster, deviceconfig_install, environment, recipe, framework):
-    #recipe = "babel"
+def test_workload_running_make_node_unhealthy(request, gpu_cluster, test_framework, deviceconfig_install, environment, recipe):
     namespace = environment.gpu_operator_namespace
     global Logger
     global LogPrettyPrinter
@@ -675,13 +721,9 @@ def test_workload_running_make_node_unhealthy(request, gpu_cluster, deviceconfig
     gpu_node = gpu_nodes[0]
     cluster_node = gpu_cluster.find_node_by_ip(k8_util.k8_get_node_address(gpu_node))
     tr_support = amdgpu_util.get_test_runner_support(cluster_node.device_id)
-    if framework == "AGFHC" and not tr_support.get("agfhc", False):
-        pytest.skip(f"skipping AGFHC tests — not supported on {cluster_node.gpu_series}")
-    if framework == "AGFHC" and recipe not in tr_support.get("agfhc_recipes", []):
-        pytest.skip(f"skipping AGFHC {recipe} — not in agfhc_recipes for {cluster_node.gpu_series}")
-    if framework == "RVS" and not tr_support.get("rvs", False):
-        pytest.skip(f"skipping RVS tests — not supported on {cluster_node.gpu_series}")
-    if framework == "RVS" and recipe not in tr_support.get("rvs_recipes", []):
+    if test_framework == "agfhc" and recipe not in tr_support.get("agfhc_recipes", []):
+        pytest.skip(f"AGFHC recipe '{recipe}' not supported on {cluster_node.gpu_series}")
+    if test_framework == "rvs" and recipe not in tr_support.get("rvs_recipes", []):
         pytest.skip(f"RVS recipe '{recipe}' not supported on {cluster_node.gpu_series}")
     worker = k8_util.k8_get_node_hostname(gpu_node)
     init_cap, alloc = k8_util.k8_get_node_gpu_capacity(worker)
@@ -694,9 +736,9 @@ def test_workload_running_make_node_unhealthy(request, gpu_cluster, deviceconfig
     ]
 
     testrunner_cfg = {}
-    update_test_runner_configmap(recipe, worker, testrunner_cfg, framework)
-    testrunner_cm = create_configmap(request, deviceconfig_install, environment, framework, testrunner_cfg)
-    update_test_runner_image(deviceconfig_install, environment, framework, testrunner_cm)
+    update_test_runner_configmap(recipe, worker, testrunner_cfg, test_framework.upper())
+    testrunner_cm = create_configmap(request, deviceconfig_install, environment, test_framework, testrunner_cfg)
+    update_test_runner_config(deviceconfig_install, environment, test_framework, testrunner_cm)
 
     sample_size = random.randint(1,len(metrics_fields.keys())-1)
     error_list = random.sample(sorted(metrics_fields.keys()), sample_size)
@@ -704,9 +746,9 @@ def test_workload_running_make_node_unhealthy(request, gpu_cluster, deviceconfig
     for error in error_list:
         thresholds.append(metrics_fields.get(error) + random.randint(1,10))
 
-    Logger.info(f"This workload should get created")
+    Logger.info(f"This workload should get created while GPU is healthy")
     local_workload_ctxts = []
-    verify_gpu_capacity_status(environment, worker, 1)
+    verify_gpu_capacity_status(environment, worker)
     params = {
         "node_name" : worker,
         "num_gpu_reqd" : init_cap,
@@ -730,15 +772,15 @@ def test_workload_running_make_node_unhealthy(request, gpu_cluster, deviceconfig
         return
     request.addfinalizer(_cleanup)
 
-
     after_events = k8_util.k8_get_events(namespace=environment.gpu_operator_namespace)
     verify_events(environment, before_events, after_events)
 
-    framework, recipe = swap_recipe(request, gpu_cluster, deviceconfig_install, environment, framework)
     ret_code, _, ret_stderr = k8_util.k8_metrics_error(thresholds, error_list, environment.gpu_operator_namespace)
     debug_on_failure(environment, ret_code == 0, f"ECC error injection failed: {ret_stderr}")
 
-    Logger.info(f"Test runner worker logs\n=========={framework}=========\n")
+    verify_gpu_capacity_status(environment, worker, expected_unhealthy=1)
+
+    Logger.info(f"Test runner worker logs\n=========={test_framework}=========\n")
     ret_code, stdout, stderr = k8_util.k8_get_pod_logs("test-runner", environment.gpu_operator_namespace)
     Logger.info(f"Test runner worker logs\n==================={stdout}\n")
     time.sleep(30)
@@ -774,11 +816,7 @@ def test_workload_running_make_node_unhealthy(request, gpu_cluster, deviceconfig
     verify_logs(environment, ["all GPUs are healthy"])
 
 @pytest.mark.level2
-@pytest.mark.parametrize("framework, recipe", [
-    ("RVS", "gst_single"),
-    ("AGFHC", "dma_lvl1")
-])
-def test_update_metric_exporter_and_test_runner(request, gpu_cluster, deviceconfig_install, environment, recipe, framework):
+def test_update_metric_exporter_and_test_runner(request, gpu_cluster, test_framework, deviceconfig_install, environment, recipe):
     namespace = environment.gpu_operator_namespace
     global Logger
     global LogPrettyPrinter
@@ -789,10 +827,10 @@ def test_update_metric_exporter_and_test_runner(request, gpu_cluster, deviceconf
     gpu_node = gpu_nodes[0]
     cluster_node = gpu_cluster.find_node_by_ip(k8_util.k8_get_node_address(gpu_node))
     tr_support = amdgpu_util.get_test_runner_support(cluster_node.device_id)
-    if framework == "AGFHC" and not tr_support.get("agfhc", False):
-        pytest.skip(f"skipping AGFHC tests — not supported on {cluster_node.gpu_series}")
-    if framework == "RVS" and not tr_support.get("rvs", False):
-        pytest.skip(f"skipping RVS tests — not supported on {cluster_node.gpu_series}")
+    if test_framework == "agfhc" and recipe not in tr_support.get("agfhc_recipes", []):
+        pytest.skip(f"AGFHC recipe '{recipe}' not supported on {cluster_node.gpu_series}")
+    if test_framework == "rvs" and recipe not in tr_support.get("rvs_recipes", []):
+        pytest.skip(f"RVS recipe '{recipe}' not supported on {cluster_node.gpu_series}")
     before_events = k8_util.k8_get_events(namespace=environment.gpu_operator_namespace)
     worker = k8_util.k8_get_node_hostname(gpu_node)
     init_cap, alloc = k8_util.k8_get_node_gpu_capacity(worker)
@@ -807,11 +845,11 @@ def test_update_metric_exporter_and_test_runner(request, gpu_cluster, deviceconf
     debug_on_failure(environment, (not failed_pods), f"One or more pods are not ready - {failed_pods}")
 
     testrunner_cfg = {}
-    update_test_runner_configmap(recipe, worker, testrunner_cfg, framework)
-    testrunner_cm = create_configmap(request, deviceconfig_install, environment, framework, testrunner_cfg)
-    update_test_runner_image(deviceconfig_install, environment, framework, testrunner_cm)
+    update_test_runner_configmap(recipe, worker, testrunner_cfg, test_framework.upper())
+    testrunner_cm = create_configmap(request, deviceconfig_install, environment, test_framework, testrunner_cfg)
+    update_test_runner_config(deviceconfig_install, environment, test_framework, testrunner_cm)
 
-    verify_gpu_capacity_status(environment, worker, 1)
+    verify_gpu_capacity_status(environment, worker)
 
     local_workload_ctxts = []
     params = {
@@ -898,16 +936,7 @@ def test_update_metric_exporter_and_test_runner(request, gpu_cluster, deviceconf
 
 
 @pytest.mark.level3
-@pytest.mark.parametrize("framework, recipe, schedule, healthy", [
-    ("RVS", "gst_single", True, True),
-    ("RVS", "iet_stress", False, True),
-    ("AGFHC", "dma_lvl1", False, False),
-    ("RVS", "babel", False, False),
-    ("RVS", "babel_single", False, False),
-    ("AGFHC", "dma_lvl2", False, True),
-    ("AGFHC", "gfx_lvl1", True, True)
-])
-def test_manual_job(request, gpu_cluster, deviceconfig_install, environment, schedule, healthy, framework, recipe, images):
+def test_manual_job(request, gpu_cluster, test_framework, deviceconfig_install, environment, schedule, healthy, recipe, images):
     global Logger
     global LogPrettyPrinter
     global metrics_fields
@@ -918,24 +947,22 @@ def test_manual_job(request, gpu_cluster, deviceconfig_install, environment, sch
     gpu_node = gpu_nodes[0]
     cluster_node = gpu_cluster.find_node_by_ip(k8_util.k8_get_node_address(gpu_node))
     tr_support = amdgpu_util.get_test_runner_support(cluster_node.device_id)
-    if framework == "AGFHC" and not tr_support.get("agfhc", False):
-        pytest.skip(f"skipping AGFHC tests — not supported on {cluster_node.gpu_series}")
-    if framework == "RVS" and not tr_support.get("rvs", False):
-        pytest.skip(f"skipping RVS tests — not supported on {cluster_node.gpu_series}")
-    if framework == "RVS" and recipe not in tr_support.get("rvs_recipes", []):
+    if test_framework == "rvs" and recipe not in tr_support.get("rvs_recipes", []):
         if recipe == "iet_stress" and "iet_single" in tr_support.get("rvs_recipes", []):
             recipe = "iet_single"
         else:
             pytest.skip(f"RVS recipe '{recipe}' not supported on {cluster_node.gpu_series}")
+    if test_framework == "agfhc" and recipe not in tr_support.get("agfhc_recipes", []):
+        pytest.skip(f"AGFHC recipe '{recipe}' not supported on {cluster_node.gpu_series}")
     before_events = k8_util.k8_get_events(namespace=environment.gpu_operator_namespace)
     worker = k8_util.k8_get_node_hostname(gpu_node)
     init_cap, alloc = k8_util.k8_get_node_gpu_capacity(worker)
     trigger = "MANUAL"
 
     testrunner_cfg = {}
-    update_test_runner_configmap(recipe, worker, testrunner_cfg, framework, trigger)
-    testrunner_cm = create_configmap(request, deviceconfig_install, environment, framework, testrunner_cfg)
-    update_test_runner_image(deviceconfig_install, environment, framework, testrunner_cm)
+    update_test_runner_configmap(recipe, worker, testrunner_cfg, test_framework.upper(), trigger)
+    testrunner_cm = create_configmap(request, deviceconfig_install, environment, test_framework, testrunner_cfg)
+    update_test_runner_config(deviceconfig_install, environment, test_framework, testrunner_cm)
 
     job_name = "test-runner-manual-trigger"
     if schedule:
@@ -982,7 +1009,7 @@ def test_manual_job(request, gpu_cluster, deviceconfig_install, environment, sch
         time.sleep(30)
         debug_on_failure(environment, k8_util.k8_get_node_health(worker, namespace) == "unhealthy",
                          f"result of kubectl describe node $NODE_NAME | grep unhealthy")
-    verify_gpu_capacity_status(environment, worker, 1)
+        verify_gpu_capacity_status(environment, worker, expected_unhealthy=1)
     ret_code, gpu_nodes = k8_util.k8_get_gpu_nodes()
     debug_on_failure(environment, (ret_code == 0), "Error while getting gpu-nodes from k8-cluster")
     debug_on_failure(environment, (len(gpu_nodes) > 0), "No nodes with AMD/GPU found in the cluster")
@@ -1074,16 +1101,16 @@ def test_manual_job(request, gpu_cluster, deviceconfig_install, environment, sch
     time.sleep(30) # Wait for exporter to start working
     # Get endpoint for each node
 
-    # Create Job
-    k8_util.k8_create_test_runner_job(namespace,
+    ret_code = k8_util.k8_create_test_runner_job(namespace,
                                       images,
                                       worker,
                                       sa_name,
                                       job_name,
-                                      framework,
+                                      test_framework.upper(),
                                       healthy,
                                       schedule,
-                                      datetime.datetime.utcnow().minute + 2)
+                                      (datetime.datetime.utcnow().minute + 2) % 60)
+    debug_on_failure(environment, ret_code == 0, f"Failed to create {'CronJob' if schedule else 'Job'} {job_name}")
 
     _delete_workload()
     if not schedule:
@@ -1127,15 +1154,7 @@ def test_manual_job(request, gpu_cluster, deviceconfig_install, environment, sch
     verify_events(environment, before_events, after_events)
 
 @pytest.mark.level3
-@pytest.mark.parametrize("framework, recipe, healthy", [
-    ("RVS", "babel", False),
-    ("RVS", "babel", True),
-    ("RVS", "babel_single", False),
-    ("RVS", "babel_single", True),
-    ("AGFHC", "all_lvl1", True),
-    ("AGFHC", "all_lvl2", False)
-])
-def test_pre_job(request, gpu_cluster, deviceconfig_install, environment, images, framework, recipe, healthy):
+def test_pre_job(request, gpu_cluster, test_framework, deviceconfig_install, environment, images, recipe, healthy):
     global Logger
     global LogPrettyPrinter
     global metrics_fields
@@ -1147,15 +1166,13 @@ def test_pre_job(request, gpu_cluster, deviceconfig_install, environment, images
     gpu_node = gpu_nodes[0]
     cluster_node = gpu_cluster.find_node_by_ip(k8_util.k8_get_node_address(gpu_node))
     tr_support = amdgpu_util.get_test_runner_support(cluster_node.device_id)
-    if framework == "AGFHC" and not tr_support.get("agfhc", False):
-        pytest.skip(f"skipping AGFHC tests — not supported on {cluster_node.gpu_series}")
-    if framework == "RVS" and not tr_support.get("rvs", False):
-        pytest.skip(f"skipping RVS tests — not supported on {cluster_node.gpu_series}")
-    if framework == "RVS" and recipe not in tr_support.get("rvs_recipes", []):
+    if test_framework == "rvs" and recipe not in tr_support.get("rvs_recipes", []):
         if recipe == "iet_stress" and "iet_single" in tr_support.get("rvs_recipes", []):
             recipe = "iet_single"
         else:
             pytest.skip(f"RVS recipe '{recipe}' not supported on {cluster_node.gpu_series}")
+    if test_framework == "agfhc" and recipe not in tr_support.get("agfhc_recipes", []):
+        pytest.skip(f"AGFHC recipe '{recipe}' not supported on {cluster_node.gpu_series}")
 
     worker = k8_util.k8_get_node_hostname(gpu_node)
     init_cap, alloc = k8_util.k8_get_node_gpu_capacity(worker)
@@ -1168,9 +1185,9 @@ def test_pre_job(request, gpu_cluster, deviceconfig_install, environment, images
     trigger = "PRE_START_JOB_CHECK"
 
     testrunner_cfg = {}
-    update_test_runner_configmap(recipe, worker, testrunner_cfg, framework, trigger)
-    testrunner_cm = create_configmap(request, deviceconfig_install, environment, framework, testrunner_cfg)
-    update_test_runner_image(deviceconfig_install, environment, framework, testrunner_cm)
+    update_test_runner_configmap(recipe, worker, testrunner_cfg, test_framework.upper(), trigger)
+    testrunner_cm = create_configmap(request, deviceconfig_install, environment, test_framework, testrunner_cfg)
+    update_test_runner_config(deviceconfig_install, environment, test_framework, testrunner_cm)
 
     devicecfg_pods = [
         common.PodInfo('device-plugin', len(gpu_nodes), 1),
@@ -1279,7 +1296,7 @@ def test_pre_job(request, gpu_cluster, deviceconfig_install, environment, images
         debug_on_failure(environment, k8_util.k8_get_node_health(worker, namespace) == "unhealthy",
                              f"result of kubectl describe node $NODE_NAME | grep unhealthy")
 
-    k8_util.k8_create_pre_test_runner_job(namespace, images, sa_name, deployment_name, worker, framework, init_cap)
+    k8_util.k8_create_pre_test_runner_job(namespace, images, sa_name, deployment_name, worker, test_framework.upper(), init_cap)
     time.sleep(10)
 
     deployment = k8_util.k8_get_deployment(namespace, deployment_name)

@@ -731,7 +731,7 @@ def get_yaml(data):
     yaml_data = str_stream.getvalue()
     return yaml_data
 
-def generate_k8_deviceconfig_cr(gpu_operator_version, spec = {}, skip_sections = {}):
+def generate_k8_deviceconfig_cr(gpu_operator_version, spec = {}, skip_sections = {}, options = {}):
 
     if "main" in gpu_operator_version or "collab-7.12" in gpu_operator_version:
         gpu_op_version = version.Version("v99.99.99")
@@ -892,41 +892,30 @@ def generate_k8_deviceconfig_cr(gpu_operator_version, spec = {}, skip_sections =
     else:
         del device_config['spec']['metricsExporter']
 
-    # test-runner 
+    # test-runner
     if 'testRunner' in device_config['spec']:
         if not skip_sections.get('testRunner', False):
-            if spec.get('testRunner.image.repository', None):
-                img = f"{spec.get('testRunner.image.repository')}:{spec.get('testRunner.image.version')}"
+            tr_framework = options.get('test_runner_framework', 'rvs')
+            if tr_framework == "agfhc":
+                prefix = 'testRunnerAgfhc'
+            else:
+                prefix = 'testRunner'
+            if spec.get(f'{prefix}.image.repository', None):
+                img = f"{spec.get(f'{prefix}.image.repository')}:{spec.get(f'{prefix}.image.version')}"
                 device_config['spec']['testRunner']['image'] = img
-            device_config['spec']['testRunner']['enable'] = spec.get('testRunner.enable', False)
-            device_config['spec']['testRunner']['imagePullPolicy'] = spec.get('testRunner.imagePullPolicy', 'IfNotPresent')
-            if spec.get('testRunner.config', None):
+            device_config['spec']['testRunner']['enable'] = spec.get(f'{prefix}.enable', False)
+            device_config['spec']['testRunner']['imagePullPolicy'] = spec.get(f'{prefix}.imagePullPolicy', 'IfNotPresent')
+            if spec.get(f'{prefix}.config', None):
                 device_config['spec']['testRunner']['config'] = {
-                        'name' : spec.get('testRunner.config'),
+                        'name' : spec.get(f'{prefix}.config'),
                 }
-            if spec.get('testRunner.image.secret', None):
+            if spec.get(f'{prefix}.image.secret', None):
                 device_config['spec']['testRunner']['imageRegistrySecret'] = {
-                        'name' : spec.get('testRunner.image.secret')
+                        'name' : spec.get(f'{prefix}.image.secret')
                 }
             if gpu_op_version >= version.Version('v1.2.0'):
-                device_config['spec']['testRunner']['upgradePolicy']['maxUnavailable'] = spec.get('testRunner.upgradePolicy.maxUnavailable', 1)
-                device_config['spec']['testRunner']['upgradePolicy']['upgradeStrategy'] = spec.get('testRunner.upgradePolicy.upgradeStrategy', 'RollingUpdate')
-        elif not skip_sections.get('testRunnerAgfhc', False):
-            if spec.get('testRunnerAgfhc.image.repository', None):
-                img = f"{spec.get('testRunnerAgfhc.image.repository')}:{spec.get('testRunnerAgfhc.image.version')}"
-                device_config['spec']['testRunner']['image'] = img
-            device_config['spec']['testRunner']['enable'] = spec.get('testRunnerAgfhc.enable', False)
-            device_config['spec']['testRunner']['imagePullPolicy'] = spec.get('testRunnerAgfhc.imagePullPolicy', 'IfNotPresent')
-            if spec.get('testRunnerAgfhc.config', None):
-                device_config['spec']['testRunner']['config'] = {
-                        'name' : spec.get('testRunnerAgfhc.config'),
-                }
-            if spec.get('testRunnerAgfhc.image.secret', None):
-                device_config['spec']['testRunner']['imageRegistrySecret'] = {
-                        'name' : spec.get('testRunnerAgfhc.image.secret')
-                }
-            device_config['spec']['testRunner']['upgradePolicy']['maxUnavailable'] = spec.get('testRunnerAgfhc.upgradePolicy.maxUnavailable', 1)
-            device_config['spec']['testRunner']['upgradePolicy']['upgradeStrategy'] = spec.get('testRunnerAgfhc.upgradePolicy.upgradeStrategy', 'RollingUpdate')
+                device_config['spec']['testRunner']['upgradePolicy']['maxUnavailable'] = spec.get(f'{prefix}.upgradePolicy.maxUnavailable', 1)
+                device_config['spec']['testRunner']['upgradePolicy']['upgradeStrategy'] = spec.get(f'{prefix}.upgradePolicy.upgradeStrategy', 'RollingUpdate')
         else:
             del device_config['spec']['testRunner']
 
