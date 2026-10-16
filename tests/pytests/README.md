@@ -348,6 +348,142 @@ cd tests/pytests
     --testbed /path/to/testbed.json
 ```
 
+### Test Runner Sanity
+
+The test-runner validates GPU health using the ROCm Validation Suite (RVS).
+It runs as a pod deployed by the gpu-operator's DeviceConfig CR,
+executing workload recipes and reporting pass/fail status.
+
+#### Test Runner — Framework Selection
+
+The `TEST_RUNNER_FRAMEWORKS` environment variable controls which
+diagnostic framework to run.
+
+| Framework | Description |
+|-----------|-------------|
+| `rvs` | ROCm Validation Suite — GPU stress, bandwidth, topology tests |
+
+```bash
+# RVS framework
+TEST_RUNNER_FRAMEWORKS=rvs \
+./k8_test_launcher.sh \
+    --app gpu-operator \
+    --image-manifest images.yaml \
+    --amdgpu-driver-spec lib/files/amd-inbox-driver-spec.json \
+    --module test_runner
+```
+
+#### Test Runner — Test Cases and Recipes
+
+Test cases in `test_test_runner.py` are parameterized by framework and
+recipe. The `TEST_RUNNER_FRAMEWORKS` env var filters which framework's
+tests run.
+
+| Test Case | RVS Recipes | Description |
+|-----------|------------|-------------|
+| `test_deviceconfig_test_runner_deploy` | — | Test-runner pod lifecycle |
+| `test_deviceconfig_test_runner_disable` | — | Disable/enable test-runner |
+| `test_deviceconfig_testrunner_disable_exporter` | — | Disable exporter while test-runner active |
+| `test_deviceconfig_unhealthy` | iet_stress | Detect unhealthy GPU via workload |
+| `test_workload_running_make_node_unhealthy` | babel, babel_single | GPU fails during active workload |
+| `test_update_metric_exporter_and_test_runner` | gst_single | Rolling update of exporter + test-runner |
+| `test_manual_job` | gst_single, iet_stress, babel, babel_single | On-demand diagnostic job |
+| `test_pre_job` | gst_single, iet_stress, babel, babel_single | Pre-workload health check |
+| `test_test_runner_rolling_update` | — | Test-runner rolling upgrade |
+
+#### Test Runner — Per-GPU-Platform Validation
+
+For ROCm platform release validation, test-runner runs per GPU platform
+with RVS framework. Each platform requires a K8s cluster with the
+matching GPU hardware and inbox driver pre-installed.
+
+**Supported platforms:** MI210, MI300X, MI325X, MI350X, MI350P, W7900, R9700S
+
+```bash
+# Generate manifest for the nightly build
+python3 ci-internal/gen_image_manifest.py ci-internal/nightly-dme-dcm.yaml
+
+cd tests/pytests
+
+# MI300X — test-runner RVS validation
+TEST_RUNNER_FRAMEWORKS=rvs \
+./k8_test_launcher.sh \
+    --app gpu-operator \
+    --image-manifest images.yaml \
+    --amdgpu-driver-spec lib/files/amd-inbox-driver-spec.json \
+    --module test_runner
+
+# MI350X — test-runner RVS validation
+TEST_RUNNER_FRAMEWORKS=rvs \
+./k8_test_launcher.sh \
+    --app gpu-operator \
+    --image-manifest images.yaml \
+    --amdgpu-driver-spec lib/files/amd-inbox-driver-spec.json \
+    --module test_runner
+```
+
+> **Note:** The GPU platform is determined by the hardware on the cluster
+> nodes, not by a CLI argument. The testbed must have the target GPU
+> installed. RVS recipes adapt to the detected GPU architecture at runtime.
+
+#### ROCm Platform Release — Full Validation Suite
+
+A complete platform release validation runs all five test targets per GPU
+platform. This is the suite that GitHub Actions workflows should
+automate:
+
+```bash
+# Pre-requisite: generate image manifest
+python3 ci-internal/gen_image_manifest.py ci-internal/nightly-dme-dcm.yaml
+
+cd tests/pytests
+
+# === Target 1: Exporter debian package ===
+./standalone_test_launcher.sh \
+    --app amdgpu-metrics-exporter-debian \
+    --image-manifest images.yaml \
+    --testbed /path/to/testbed.json
+
+# === Target 2: Exporter docker container ===
+./standalone_test_launcher.sh \
+    --app amdgpu-metrics-exporter-docker \
+    --image-manifest images.yaml \
+    --testbed /path/to/testbed.json
+
+# === Target 3: Exporter helm chart (K8s) ===
+./k8_test_launcher.sh \
+    --app gpu-operator-exporter \
+    --image-manifest images.yaml \
+    --amdgpu-driver-spec lib/files/amd-inbox-driver-spec.json
+
+# === Target 4: Exporter pod via gpu-operator (K8s) ===
+./k8_test_launcher.sh \
+    --app gpu-operator \
+    --image-manifest images.yaml \
+    --amdgpu-driver-spec lib/files/amd-inbox-driver-spec.json \
+    --module exporter
+
+# === Target 5: Test-runner RVS (K8s) ===
+TEST_RUNNER_FRAMEWORKS=rvs \
+./k8_test_launcher.sh \
+    --app gpu-operator \
+    --image-manifest images.yaml \
+    --amdgpu-driver-spec lib/files/amd-inbox-driver-spec.json \
+    --module test_runner
+```
+
+Each target is independent and can run in parallel on separate clusters.
+All five targets use the same image manifest and inbox driver. The GPU
+platform (MI300X, MI350X, etc.) is determined by the cluster hardware.
+
+> **For GitHub Actions workflow implementation:** Each of the five targets
+> above maps to a separate job in the workflow. The workflow should:
+> 1. Generate the image manifest via `ci-internal/gen_image_manifest.py`
+> 2. Run all five targets in parallel (or sequentially on the same cluster)
+> 3. Collect pytest HTML reports and JUnit XML from `tests/pytests/logs/`
+> 4. The `--testbed` argument is only needed for standalone targets (debian, docker)
+> 5. K8s targets require `kubeconfig` pre-configured on the runner
+
 ### DCM (Device Config Manager) Sanity
 
 #### Config Manager — K8s with DeviceConfig driver
