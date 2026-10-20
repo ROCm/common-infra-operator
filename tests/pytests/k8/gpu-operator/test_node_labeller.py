@@ -84,6 +84,8 @@ EXPECTED_GA_LABELS = {
     "amd.com/gpu.device-id",
     "amd.com/gpu.family",
     "amd.com/gpu.simd-count",
+    "amd.com/gpu.cu-count",
+    "amd.com/gpu.product-name",
     "amd.com/gpu.vram",
 }
 
@@ -454,7 +456,8 @@ def test_node_labeller_check_labels(gpu_cluster, deviceconfig_install, environme
     for node in gpu_nodes:
         node_name = k8_util.k8_get_node_hostname(node)
         # expected labels list
-        exp_label_list = ["amd.com/gpu.family", "amd.com/gpu.device-id", "amd.com/gpu.vram", "amd.com/gpu.simd-count"]
+        exp_label_list = ["amd.com/gpu.family", "amd.com/gpu.device-id", "amd.com/gpu.vram",
+                          "amd.com/gpu.simd-count", "amd.com/gpu.cu-count", "amd.com/gpu.product-name"]
         # get node labels
         labels = k8_util.k8_get_node_labels(node_name)
         K8Helper.triage(environment, (labels != None), "Failed to get labels for node {node_name}")
@@ -472,6 +475,29 @@ def test_node_labeller_check_labels(gpu_cluster, deviceconfig_install, environme
         K8Helper.triage(environment, gpu_family == expected_family,
                         f"Incorrect value for label: amd.com/gpu.family={gpu_family}, expected {expected_family}")
         K8Helper.triage(environment, (int(labels_dict["amd.com/gpu.simd-count"]) > 0), "Incorrect value of amd.com/gpu.simd-count")
+
+        # cu-count validation
+        if "amd.com/gpu.cu-count" in labels_dict:
+            K8Helper.triage(environment, (int(labels_dict["amd.com/gpu.cu-count"]) > 0), "Incorrect value of amd.com/gpu.cu-count")
+
+        # product-name validation — catch the generic "AMD_Radeon_Graphics" fallback
+        if "amd.com/gpu.product-name" in labels_dict:
+            actual_product = labels_dict["amd.com/gpu.product-name"]
+            expected_product = "UNKNOWN"
+            if cluster_node:
+                expected_product = amdgpu_util.get_gpu_product_name(cluster_node.device_id)
+            if expected_product == "UNKNOWN":
+                Logger.warning(f"No product_name in amdgpu-features.json for device-id "
+                               f"{cluster_node.device_id if cluster_node else '?'} on {node_name} — skipping validation")
+            else:
+                K8Helper.triage(environment, actual_product != "AMD_Radeon_Graphics",
+                                f"product-name is generic fallback 'AMD_Radeon_Graphics' on {node_name} — "
+                                f"k8s-device-plugin may be missing marketing name for device-id "
+                                f"{labels_dict.get('amd.com/gpu.device-id', '?')}")
+                normalized_actual = actual_product.replace("_", " ")
+                K8Helper.triage(environment, normalized_actual == expected_product,
+                                f"product-name mismatch on {node_name}: "
+                                f"label='{actual_product}', expected='{expected_product}'")
 
         # check the device id and count
         """

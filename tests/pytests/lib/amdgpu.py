@@ -60,6 +60,20 @@ def get_amdgpu_device_series(device_id) -> str:
             return entry.get("series", "UNKNOWN")
     return "UNKNOWN"
 
+def get_gpu_product_name(device_id) -> str:
+    """Lookup device-id in amdgpu-features.json to retrieve the expected marketing product name."""
+    module_dir = os.path.dirname(os.path.abspath(__file__))
+    json_file = os.path.join(module_dir, "files", "amdgpu-features.json")
+    with open(json_file, "r") as fp:
+        amdgpu_feature_data = json.load(fp)
+    dev_id_str = str(device_id).strip()
+    if not dev_id_str.lower().startswith("0x"):
+        dev_id_str = f"0x{dev_id_str}"
+    for entry in amdgpu_feature_data['amd-gpu-devs']:
+        if dev_id_str in entry.get("device-id", []):
+            return entry.get("product_name", "UNKNOWN")
+    return "UNKNOWN"
+
 def get_supported_operands(gpu_op_version: str):
     """
     Look up gpu_op_version in the lib/files/gpu-operator-operands-support.json
