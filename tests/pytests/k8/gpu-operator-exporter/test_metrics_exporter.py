@@ -616,6 +616,12 @@ def test_exporter_all_supported_metrics(request, gpu_cluster, images, environmen
                                                               dme_version = environment.exporter_version,
                                                               num_gpus = node.num_gpus)
         Logger.info(f"Node: {node.host_name} having {node.gpu_series} has {len(supported_metrics)} metrics")
+        # Empty set means the GPU is unknown to the harness - the loop below would validate nothing
+        K8Helper.triage(environment, (len(supported_metrics) > 0),
+                        f"No supported-metric definitions for node {node.host_name} "
+                        f"(gpu_series={node.gpu_series}, device_id={node.device_id}) - "
+                        f"cannot validate exporter metrics. Add this device to "
+                        f"lib/files/amdgpu-features.json and lib/files/metrics-support.json")
         for entry in supported_metrics:
             metric_to_test = entry['name']
             Logger.info(f"Checking {metric_to_test} among exported metrics for node {node.host_name}")

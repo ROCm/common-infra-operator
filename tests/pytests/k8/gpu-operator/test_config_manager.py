@@ -44,7 +44,7 @@ Test Organization:
     - Integration tests: DCM with metrics exporter and test runner
 
 Supported GPU Series:
-    MI300X, MI325X, MI350X, MI350P (MI2xx series not supported)
+    MI300X, MI308X, MI325X, MI350X, MI350P (MI2xx series not supported)
 
 DeviceConfig CR Management:
     Tests create, modify, and delete DeviceConfig CRs to manage DCM lifecycle.
@@ -1675,6 +1675,22 @@ def test_partitioning_workload_MI300X(gpu_cluster, deviceconfig_install, environ
     gpu_series = get_gpu_series(gpu_cluster, environment)
     if gpu_series != 'MI300X':
         pytest.skip(f"Testcases specifically designed for MI300X")
+    run_partition_test_scenario(gpu_cluster, environment, request, profile, workload = True)
+
+@pytest.mark.level2
+@pytest.mark.parametrize("profile", ["QPX_NPS1", "DPX_NPS1", "CPX_NPS1", "SPX_NPS1"])
+def test_partitioning_no_workload_MI308X(gpu_cluster, deviceconfig_install, environment, request, profile):
+    gpu_series = get_gpu_series(gpu_cluster, environment)
+    if gpu_series != 'MI308X':
+        pytest.skip(f"Testcases specifically designed for MI308X")
+    run_partition_test_scenario(gpu_cluster, environment, request, profile, workload = False)
+
+@pytest.mark.level2
+@pytest.mark.parametrize("profile", ["QPX_NPS1", "DPX_NPS1", "CPX_NPS1", "SPX_NPS1"])
+def test_partitioning_workload_MI308X(gpu_cluster, deviceconfig_install, environment, request, profile):
+    gpu_series = get_gpu_series(gpu_cluster, environment)
+    if gpu_series != 'MI308X':
+        pytest.skip(f"Testcases specifically designed for MI308X")
     run_partition_test_scenario(gpu_cluster, environment, request, profile, workload = True)
 
 @pytest.mark.level2

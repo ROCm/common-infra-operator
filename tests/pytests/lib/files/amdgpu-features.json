@@ -637,6 +637,38 @@
         }
       },
       "gfxversion": "gfx110x"
+    },
+    {
+      "device-id": [
+        "0x744c"
+      ],
+      "series": "R7900XTX",
+      "product_name": "AMD Radeon RX 7900 XTX",
+      "architecture": "RDNA3",
+      "gfx": "gfx1100",
+      "features": {
+        "gpu_family": "GC_11_0_0",
+        "profiler_metrics": true,
+        "gpu_partitioning": false,
+        "xgmi": true,
+        "ecc": true,
+        "test_runner": {
+          "rvs": true,
+          "agfhc": false,
+          "rvs_recipes": [
+            "mem",
+            "gpup_single",
+            "gst_single",
+            "iet_single",
+            "rcqt_single",
+            "pbqt_single",
+            "pebb_single",
+            "peqt_single",
+            "pesm_1"
+          ]
+        }
+      },
+      "gfxversion": "gfx110x"
     }
   ],
   "recipe-timeouts": {
