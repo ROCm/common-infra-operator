@@ -2884,7 +2884,10 @@
           "amd-smi": ""
         }
       ],
-      "requires-multi-gpu": true
+      "requires-multi-gpu": true,
+      "type": {
+        "contingent": "yes"
+      }
     },
     {
       "name": "GPU_XGMI_LINK_TX",
@@ -2899,7 +2902,10 @@
           "amd-smi": ""
         }
       ],
-      "requires-multi-gpu": true
+      "requires-multi-gpu": true,
+      "type": {
+        "contingent": "yes"
+      }
     },
     {
       "name": "GPU_PROF_GRBM_GUI_ACTIVE",
@@ -3786,6 +3792,27 @@
             "MI350P",
             "R9700S",
             "W7900"
+          ],
+          "gpu-agent": "",
+          "amd-smi": ""
+        }
+      ]
+    },
+    {
+      "name": "GPU_PROCESS_CU_OCCUPANCY",
+      "hypervisor-mode": "no",
+      "skip-validation": "yes",
+      "gpu-support": [
+        {
+          "gpu": [
+            "MI210",
+            "MI250",
+            "MI300X",
+            "MI300X-VF",
+            "MI325X",
+            "MI325X-VF",
+            "MI350P",
+            "MI350X"
           ],
           "gpu-agent": "",
           "amd-smi": ""
