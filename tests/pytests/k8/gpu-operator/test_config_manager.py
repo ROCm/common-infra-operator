@@ -44,7 +44,7 @@ Test Organization:
     - Integration tests: DCM with metrics exporter and test runner
 
 Supported GPU Series:
-    MI300X, MI325X, MI350X, MI350P (MI2xx series not supported)
+    MI300X, MI308X, MI325X, MI350X, MI350P (MI2xx series not supported)
 
 DeviceConfig CR Management:
     Tests create, modify, and delete DeviceConfig CRs to manage DCM lifecycle.
@@ -1678,6 +1678,22 @@ def test_partitioning_workload_MI300X(gpu_cluster, deviceconfig_install, environ
     run_partition_test_scenario(gpu_cluster, environment, request, profile, workload = True)
 
 @pytest.mark.level2
+@pytest.mark.parametrize("profile", ["QPX_NPS1", "DPX_NPS1", "CPX_NPS1", "SPX_NPS1"])
+def test_partitioning_no_workload_MI308X(gpu_cluster, deviceconfig_install, environment, request, profile):
+    gpu_series = get_gpu_series(gpu_cluster, environment)
+    if gpu_series != 'MI308X':
+        pytest.skip(f"Testcases specifically designed for MI308X")
+    run_partition_test_scenario(gpu_cluster, environment, request, profile, workload = False)
+
+@pytest.mark.level2
+@pytest.mark.parametrize("profile", ["QPX_NPS1", "DPX_NPS1", "CPX_NPS1", "SPX_NPS1"])
+def test_partitioning_workload_MI308X(gpu_cluster, deviceconfig_install, environment, request, profile):
+    gpu_series = get_gpu_series(gpu_cluster, environment)
+    if gpu_series != 'MI308X':
+        pytest.skip(f"Testcases specifically designed for MI308X")
+    run_partition_test_scenario(gpu_cluster, environment, request, profile, workload = True)
+
+@pytest.mark.level2
 @pytest.mark.parametrize("profile", ["QPX_NPS1", "DPX_NPS2", "QPX_NPS4", "DPX_NPS1", "CPX_NPS1", "CPX_NPS4", "SPX_NPS1"])
 def test_partitioning_no_workload_MI325X(gpu_cluster, deviceconfig_install, environment, request, profile):
     gpu_series = get_gpu_series(gpu_cluster, environment)
@@ -1696,7 +1712,7 @@ def test_partitioning_workload_MI325X(gpu_cluster, deviceconfig_install, environ
 
 @pytest.mark.skip(reason="test-runner operand is not deployed in DME/DCM-only CI targets")
 @pytest.mark.level23
-@pytest.mark.parametrize("profile", ["CPX_NPS4", "DPX_NPS2"])
+@pytest.mark.parametrize("profile", ["DPX_NPS1", "DPX_NPS2"])
 def test_partitioning_test_runner(gpu_cluster, deviceconfig_install, environment, request, images, profile):
     gpu_series = get_gpu_series(gpu_cluster, environment)
     ret_code, gpu_nodes = k8_util.k8_get_gpu_nodes()
@@ -1704,12 +1720,12 @@ def test_partitioning_test_runner(gpu_cluster, deviceconfig_install, environment
     if not series_features.get('gpu_partitioning', False):
         pytest.skip(f"GPU partitioning not supported for {gpu_series}")
 
-    framework = "RVS"
+    framework = "rvs"
     recipe = "gst_single"
     configmap = {}
     for node in gpu_nodes:
         worker = k8_util.k8_get_node_hostname(node)
-        test_test_runner.update_test_runner_configmap(recipe, worker, configmap, framework)
+        test_test_runner.update_test_runner_configmap(recipe, worker, configmap, framework.upper())
 
     configmap_name = test_test_runner.create_configmap(request, deviceconfig_install, environment, framework, configmap)
     test_test_runner.update_test_runner_config(deviceconfig_install, environment, framework, configmap_name)
