@@ -90,6 +90,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "amd-smi": "power.socket_power",
           "gpu-agent": "stats.PackagePower"
         }
@@ -205,6 +206,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "stats.temperature.junction_temperature",
           "amd-smi": "temperature.hotspot"
         }
@@ -229,6 +231,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "stats.temperature.memory_temperature",
           "amd-smi": "temperature.mem"
         }
@@ -268,6 +271,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "stats.usage.gfx_activity",
           "amd-smi": "usage.gfx_activity"
         }
@@ -291,6 +295,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "stats.usage.umc_activity",
           "amd-smi": "usage.umc_activity"
         }
@@ -387,6 +392,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.pcie_status->speed",
           "amd-smi": "pcie.speed"
         }
@@ -412,6 +418,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.pcie_status->max_speed",
           "amd-smi": "pcie.max_pcie_speed"
         }
@@ -432,6 +439,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "status.pcie_status->bandwidth",
           "amd-smi": "pcie.bandwidth"
         }
@@ -457,6 +465,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "stats.energy_consumed",
           "amd-smi": "energy.total_energy_consumption"
         }
@@ -476,6 +485,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "stats->pcie_stats.replay_count",
           "amd-smi": "pcie.pcie_replay_count"
         }
@@ -496,6 +506,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "stats->pcie_stats.recovery_count",
           "amd-smi": "pcie.l0_to_recovery_count"
         }
@@ -516,6 +527,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "stats->pcie_stats.replay_rollover_count",
           "amd-smi": "pcie.replay_roll_over_count"
         }
@@ -536,6 +548,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "stats->pcie_stats.nack_sent_count",
           "amd-smi": "pcie.nak_sent_count"
         }
@@ -556,6 +569,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "stats->pcie_stats.nack_received_count",
           "amd-smi": "pcie.nak_received_count"
         }
@@ -585,6 +599,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status",
           "amd-smi": "clock.gfx_{idx}.clk"
         }
@@ -617,6 +632,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] MEMORY",
           "amd-smi": "clock.dclk_{idx}.clk"
         }
@@ -649,6 +665,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] VIDEO",
           "amd-smi": "clock.socclk_{idx}.clk"
         }
@@ -669,7 +686,6 @@
       "gpu-support": [
         {
           "gpu": [
-            "MI210",
             "MI250",
             "MI325X",
             "MI325X-VF",
@@ -680,6 +696,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] DATA",
           "amd-smi": "clock.fclk_{idx}.clk"
         }
@@ -713,6 +730,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] DATA",
           "amd-smi": "clock.mem_{idx}.clk"
         }
@@ -745,6 +763,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] DATA",
           "amd-smi": "clock.vclk_{idx}.clk"
         }
@@ -777,6 +796,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status",
           "amd-smi": "clock.gfx_{idx}.clk"
         }
@@ -809,6 +829,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] MEMORY",
           "amd-smi": "clock.dclk_{idx}.clk"
         }
@@ -841,6 +862,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] VIDEO",
           "amd-smi": "clock.socclk_{idx}.clk"
         }
@@ -860,7 +882,6 @@
       "gpu-support": [
         {
           "gpu": [
-            "MI210",
             "MI250",
             "MI325X",
             "MI325X-VF",
@@ -872,6 +893,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] DATA",
           "amd-smi": "clock.fclk_{idx}.clk"
         }
@@ -905,6 +927,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] DATA",
           "amd-smi": "clock.mem_{idx}.clk"
         }
@@ -937,6 +960,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] DATA",
           "amd-smi": "clock.vclk_{idx}.clk"
         }
@@ -968,6 +992,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status",
           "amd-smi": "clock.gfx_{idx}.min_clk"
         }
@@ -998,6 +1023,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] MEMORY",
           "amd-smi": "clock.dclk_{idx}.min_clk"
         }
@@ -1029,6 +1055,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] VIDEO",
           "amd-smi": "clock.socclk_{idx}.min_clk"
         }
@@ -1048,7 +1075,6 @@
       "gpu-support": [
         {
           "gpu": [
-            "MI210",
             "MI300X",
             "MI308X",
             "MI300X-VF",
@@ -1059,6 +1085,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] DATA",
           "amd-smi": "clock.fclk_{idx}.min_clk"
         }
@@ -1091,6 +1118,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] DATA",
           "amd-smi": "clock.mem_{idx}.min_clk"
         }
@@ -1121,6 +1149,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] DATA",
           "amd-smi": "clock.vclk_{idx}.min_clk"
         }
@@ -1152,6 +1181,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status",
           "amd-smi": "clock.gfx_{idx}.max_clk"
         }
@@ -1182,6 +1212,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] MEMORY",
           "amd-smi": "clock.dclk_{idx}.max_clk"
         }
@@ -1213,6 +1244,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] VIDEO",
           "amd-smi": "clock.socclk_{idx}.max_clk"
         }
@@ -1232,7 +1264,6 @@
       "gpu-support": [
         {
           "gpu": [
-            "MI210",
             "MI300X",
             "MI308X",
             "MI300X-VF",
@@ -1243,6 +1274,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] DATA",
           "amd-smi": "clock.fclk_{idx}.max_clk"
         }
@@ -1275,6 +1307,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] DATA",
           "amd-smi": "clock.mem_{idx}.max_clk"
         }
@@ -1305,6 +1338,7 @@
             "R7900XTX",
             "W7900"
           ],
+          "scope": "socket",
           "gpu-agent": "status.clock_status[i] DATA",
           "amd-smi": "clock.vclk_{idx}.max_clk"
         }
@@ -1329,6 +1363,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "stats.power_usage",
           "amd-smi": "gpu_metrics.average_socket_power"
         }
@@ -1576,6 +1611,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "stats->violation_stats.processor_hot_residency_accumulated",
           "amd-smi": "throttle.prochot_accumulated"
         }
@@ -1595,6 +1631,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "stats->violation_stats.ppt_residency_accumulated",
           "amd-smi": "throttle.ppt_accumulated"
         }
@@ -1615,6 +1652,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "stats->violation_stats.socket_thermal_residency_accumulated",
           "amd-smi": "metrics_info.socket_thm_residency_acc"
         }
@@ -1635,6 +1673,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "stats->violation_stats.vr_thermal_residency_accumulated",
           "amd-smi": "metrics_info.vr_thm_residency_acc"
         }
@@ -1654,6 +1693,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "stats->violation_stats.hbm_thermal_residency_accumulated",
           "amd-smi": "throttle.hbm_thermal_violation_accumulated"
         }
@@ -4060,6 +4100,9 @@
       "name": "GPU_PROCESS_CU_OCCUPANCY",
       "hypervisor-mode": "no",
       "skip-validation": "yes",
+      "type": {
+        "contingent": "yes"
+      },
       "gpu-support": [
         {
           "gpu": [
@@ -4161,6 +4204,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "",
           "amd-smi": ""
         }
@@ -4182,6 +4226,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "",
           "amd-smi": "throttle.hbm_thermal_violation_activity"
         }
@@ -4202,6 +4247,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "",
           "amd-smi": "throttle.ppt_violation_activity"
         }
@@ -4222,6 +4268,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "",
           "amd-smi": "throttle.prochot_violation_activity"
         }
@@ -4245,6 +4292,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "",
           "amd-smi": "throttle.socket_thermal_violation_activity"
         }
@@ -4268,6 +4316,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "",
           "amd-smi": "throttle.vr_thermal_violation_activity"
         }
@@ -4393,6 +4442,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "",
           "amd-smi": "throttle.gfx_clk_below_host_limit_thermal_violation_activity.xcp_{partition_id}"
         }
@@ -4418,6 +4468,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "",
           "amd-smi": "throttle.gfx_clk_below_host_limit_power_violation_activity.xcp_{partition_id}"
         }
@@ -4443,6 +4494,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "",
           "amd-smi": "throttle.low_utilization_violation_activity.xcp_{partition_id}"
         }
@@ -4468,6 +4520,7 @@
             "MI350X",
             "MI350P"
           ],
+          "scope": "socket",
           "gpu-agent": "",
           "amd-smi": "throttle.total_gfx_clk_below_host_limit_violation_activity.xcp_{partition_id}"
         }
