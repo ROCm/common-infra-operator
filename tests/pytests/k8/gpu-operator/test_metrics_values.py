@@ -333,7 +333,7 @@ def test_exporter_all_supported_metrics(gpu_cluster, metrics_samples, images, en
         # Number of GPU partitions on the node, and partitions per physical GPU.
         gpu_count = gpu_capacity if gpu_capacity > 0 else cluster_node.num_gpus
         # num_gpus counts partitions on a node partitioned at discovery; stride needs physical GPUs
-        physical_gpus = cluster_node.num_physical_gpus or cluster_node.num_gpus
+        physical_gpus = getattr(cluster_node, "num_physical_gpus", 0) or cluster_node.num_gpus
         slices_per_gpu = max(1, gpu_count // physical_gpus) if physical_gpus else 1
 
         # Pick up first sample of exporter metrics for given node
@@ -435,7 +435,7 @@ def test_exporter_metrics_completeness(gpu_cluster, images, metrics_samples, met
         gpu_capacity, _ = k8_util.k8_get_node_gpu_capacity(node_name)
         # Number of GPU partitions on the node, and partitions per physical GPU.
         total_slices = gpu_capacity if gpu_capacity > 0 else cluster_node.num_gpus
-        physical_gpus = cluster_node.num_physical_gpus or cluster_node.num_gpus
+        physical_gpus = getattr(cluster_node, "num_physical_gpus", 0) or cluster_node.num_gpus
         slices_per_gpu = max(1, total_slices // physical_gpus) if physical_gpus else 1
         # Socket-scope metrics are present only on each GPU's first partition.
         step = slices_per_gpu if metric_util.metric_scope(metric_to_test, cluster_node.gpu_series) == 'socket' else 1
