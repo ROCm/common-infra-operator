@@ -19,6 +19,7 @@ pytest
 pytest-html
 jinja2
 ruamel.yaml
+pyyaml
 requests
 kubernetes
 prometheus_client

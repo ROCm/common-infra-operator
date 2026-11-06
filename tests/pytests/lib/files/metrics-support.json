@@ -16,6 +16,7 @@
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "",
@@ -37,10 +38,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "",
@@ -60,10 +63,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "",
@@ -80,6 +85,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -98,6 +104,7 @@
         {
           "gpu": [
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "power.socket_power",
@@ -113,6 +120,7 @@
         {
           "gpu": [
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "power.mem_voltage",
@@ -127,6 +135,7 @@
       "gpu-support": [
         {
           "gpu": [
+            "R7900XTX",
             "W7900",
             "R9700S"
           ],
@@ -144,6 +153,7 @@
             "MI210",
             "MI250",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "power.socket_power",
@@ -159,6 +169,7 @@
             "MI210",
             "MI250",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "stats.temperature.edge_temperature",
@@ -186,10 +197,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "stats.temperature.junction_temperature",
@@ -208,10 +221,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "stats.temperature.memory_temperature",
@@ -246,9 +261,11 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "stats.usage.gfx_activity",
@@ -267,9 +284,11 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "stats.usage.umc_activity",
@@ -285,6 +304,7 @@
         {
           "gpu": [
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "stats.usage.mma_activity",
@@ -309,6 +329,7 @@
         {
           "gpu": [
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "stats.usage.vcn_activity",
@@ -358,10 +379,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.pcie_status->speed",
@@ -381,10 +404,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.pcie_status->max_speed",
@@ -402,6 +427,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -424,9 +450,11 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "stats.energy_consumed",
@@ -443,6 +471,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -462,6 +491,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -481,6 +511,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -500,6 +531,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -519,6 +551,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -549,6 +582,7 @@
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status",
@@ -580,6 +614,7 @@
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] MEMORY",
@@ -611,6 +646,7 @@
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] VIDEO",
@@ -641,6 +677,7 @@
             "MI300X-VF",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] DATA",
@@ -673,6 +710,7 @@
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] DATA",
@@ -704,6 +742,7 @@
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] DATA",
@@ -730,10 +769,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status",
@@ -760,10 +801,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] MEMORY",
@@ -790,10 +833,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] VIDEO",
@@ -820,9 +865,11 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] DATA",
@@ -850,10 +897,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] DATA",
@@ -880,10 +929,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] DATA",
@@ -907,12 +958,14 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status",
@@ -935,12 +988,14 @@
         {
           "gpu": [
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] MEMORY",
@@ -964,12 +1019,14 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] VIDEO",
@@ -993,11 +1050,13 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI325X",
             "MI325X-VF",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] DATA",
@@ -1022,12 +1081,14 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] DATA",
@@ -1050,12 +1111,14 @@
         {
           "gpu": [
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] DATA",
@@ -1079,12 +1142,14 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status",
@@ -1107,12 +1172,14 @@
         {
           "gpu": [
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] MEMORY",
@@ -1136,12 +1203,14 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] VIDEO",
@@ -1165,11 +1234,13 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI325X",
             "MI325X-VF",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] DATA",
@@ -1194,12 +1265,14 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] DATA",
@@ -1222,12 +1295,14 @@
         {
           "gpu": [
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.clock_status[i] DATA",
@@ -1249,6 +1324,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -1268,10 +1344,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "status.vramstatus.size",
@@ -1290,10 +1368,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "stats.vram_usage.used_vram",
@@ -1312,10 +1392,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "stats.vram_usage.free_vram",
@@ -1333,10 +1415,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "stats.vram_usage.total_visible_vram",
@@ -1354,10 +1438,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "stats.vram_usage.used_visible_vram",
@@ -1375,10 +1461,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "stats.vram_usage.free_visible_vram",
@@ -1396,10 +1484,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "stats.vram_usage.total_gtt",
@@ -1417,10 +1507,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "stats.vram_usage.used_gtt",
@@ -1438,10 +1530,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "stats.vram_usage.free_gtt",
@@ -1457,6 +1551,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -1476,6 +1571,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -1494,6 +1590,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -1513,6 +1610,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -1532,6 +1630,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -1550,6 +1649,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -1570,6 +1670,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI350X",
             "MI350P"
           ],
@@ -1588,6 +1689,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI350X",
             "MI350P"
           ],
@@ -1606,6 +1708,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI350X",
             "MI350P"
           ],
@@ -1626,10 +1729,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -1649,10 +1754,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -1672,10 +1779,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -1695,10 +1804,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -1718,10 +1829,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -1741,10 +1854,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -1764,10 +1879,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -1787,10 +1904,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -1810,10 +1929,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -1833,10 +1954,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -1856,10 +1979,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -1879,10 +2004,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -1902,10 +2029,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -1925,10 +2054,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -1948,10 +2079,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -1971,10 +2104,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -1994,10 +2129,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2017,10 +2154,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2040,10 +2179,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2063,10 +2204,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2086,10 +2229,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2109,10 +2254,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2132,10 +2279,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2155,10 +2304,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2178,10 +2329,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2201,10 +2354,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2224,10 +2379,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2247,10 +2404,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2270,10 +2429,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2293,10 +2454,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2316,10 +2479,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2339,10 +2504,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2362,10 +2529,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2385,10 +2554,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2408,10 +2579,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2431,10 +2604,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2454,10 +2629,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2477,10 +2654,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2500,10 +2679,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2524,10 +2705,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.UMC.uncorrectable_count"
@@ -2546,10 +2729,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2570,10 +2755,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2594,10 +2781,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2618,10 +2807,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2642,10 +2833,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2666,10 +2859,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2690,10 +2885,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2714,10 +2911,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2738,10 +2937,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2762,10 +2963,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2786,10 +2989,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2810,10 +3015,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2834,10 +3041,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2858,10 +3067,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2878,13 +3089,17 @@
         {
           "gpu": [
             "MI300X",
+            "MI308X",
             "MI325X"
           ],
           "gpu-agent": "",
           "amd-smi": ""
         }
       ],
-      "requires-multi-gpu": true
+      "requires-multi-gpu": true,
+      "type": {
+        "contingent": "yes"
+      }
     },
     {
       "name": "GPU_XGMI_LINK_TX",
@@ -2893,13 +3108,17 @@
         {
           "gpu": [
             "MI300X",
+            "MI308X",
             "MI325X"
           ],
           "gpu-agent": "",
           "amd-smi": ""
         }
       ],
-      "requires-multi-gpu": true
+      "requires-multi-gpu": true,
+      "type": {
+        "contingent": "yes"
+      }
     },
     {
       "name": "GPU_PROF_GRBM_GUI_ACTIVE",
@@ -2909,11 +3128,13 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2929,11 +3150,13 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2949,11 +3172,13 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -2969,6 +3194,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -2987,6 +3213,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3005,6 +3232,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3023,6 +3251,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3041,6 +3270,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3059,6 +3289,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3077,6 +3308,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3095,6 +3327,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3113,6 +3346,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3131,6 +3365,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3149,6 +3384,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3422,6 +3658,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3440,6 +3677,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3458,6 +3696,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3476,6 +3715,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3494,6 +3734,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3512,6 +3753,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3530,6 +3772,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3548,11 +3791,13 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -3568,10 +3813,12 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -3587,6 +3834,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3605,6 +3853,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3623,6 +3872,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3641,11 +3891,13 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -3661,11 +3913,13 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -3681,6 +3935,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3699,11 +3954,13 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -3719,11 +3976,13 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -3739,6 +3998,7 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
@@ -3759,11 +4019,13 @@
           "gpu": [
             "MI210",
             "MI300X",
+            "MI308X",
             "MI325X",
             "MI325X-VF",
             "MI350P",
             "MI350X",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -3782,10 +4044,34 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
+          ],
+          "gpu-agent": "",
+          "amd-smi": ""
+        }
+      ]
+    },
+    {
+      "name": "GPU_PROCESS_CU_OCCUPANCY",
+      "hypervisor-mode": "no",
+      "skip-validation": "yes",
+      "gpu-support": [
+        {
+          "gpu": [
+            "MI210",
+            "MI250",
+            "MI300X",
+            "MI308X",
+            "MI300X-VF",
+            "MI325X",
+            "MI325X-VF",
+            "MI350P",
+            "MI350X"
           ],
           "gpu-agent": "",
           "amd-smi": ""
@@ -3803,9 +4089,11 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "gpu-agent": "",
@@ -3868,6 +4156,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -3888,6 +4177,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -3907,6 +4197,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -3926,6 +4217,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -3948,6 +4240,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -3970,6 +4263,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -4192,6 +4486,7 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P"
@@ -4213,10 +4508,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.ATHUB.deferred_count",
@@ -4236,10 +4533,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.PCIE_BIF.deferred_count",
@@ -4259,10 +4558,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.DF.deferred_count",
@@ -4282,10 +4583,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.FUSE.deferred_count",
@@ -4305,10 +4608,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.GFX.deferred_count",
@@ -4328,10 +4633,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.HDP.deferred_count",
@@ -4351,10 +4658,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.IH.deferred_count",
@@ -4374,10 +4683,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.JPEG.deferred_count",
@@ -4397,10 +4708,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.MCA.deferred_count",
@@ -4420,10 +4733,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.MMHUB.deferred_count",
@@ -4443,10 +4758,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.MP0.deferred_count",
@@ -4466,10 +4783,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.MP1.deferred_count",
@@ -4489,10 +4808,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.MPIO.deferred_count",
@@ -4512,10 +4833,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.SDMA.deferred_count",
@@ -4535,10 +4858,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.SEM.deferred_count",
@@ -4558,10 +4883,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.SMN.deferred_count",
@@ -4581,10 +4908,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc.total_deferred_count",
@@ -4604,10 +4933,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.UMC.deferred_count",
@@ -4627,10 +4958,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.VCN.deferred_count",
@@ -4650,10 +4983,12 @@
             "MI325X",
             "MI325X-VF",
             "MI300X",
+            "MI308X",
             "MI300X-VF",
             "MI350X",
             "MI350P",
             "R9700S",
+            "R7900XTX",
             "W7900"
           ],
           "amd-smi": "ecc_blocks.XGMI_WAFL.deferred_count",

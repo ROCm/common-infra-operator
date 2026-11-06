@@ -197,4 +197,14 @@ then
     exit 1
 fi
 
+if [[ "${DRIVER_SPEC}" != "NA" ]];
+then
+    DRIVER_DEPLOY=$(jq -r '."driver-deployment" // empty' "${DRIVER_SPEC}" 2>/dev/null)
+    if [[ "${DRIVER_DEPLOY}" == "inbox" ]];
+    then
+        echo "ERROR: inbox driver is not supported on OpenShift — driver must be source-built via KMM."
+        exit 1
+    fi
+fi
+
 launch_pytest

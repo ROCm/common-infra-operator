@@ -50,6 +50,8 @@ _SENSITIVE_KEY_RE = re.compile(
 )
 _REDACTED = '***REDACTED***'
 
+_K8_SECRET_TYPES = {"docker-registry", "tls", "generic"}
+
 
 def _is_sensitive(name):
     return bool(_SENSITIVE_PARAM_RE.search(name)) or bool(_SENSITIVE_KEY_RE.match(name))
@@ -104,6 +106,8 @@ def k8_init_cluster(k8_cluster : common.k8_cluster, namespaces):
                 Logger.debug(f"Failed to create namespace {namespace}, error: {ret_stderr}")
 
             for entry in k8_cluster.k8_secrets["secrets"]:
+                if entry.get("type") not in _K8_SECRET_TYPES:
+                    continue
                 ret_code, ret_stdout, ret_stderr = k8_delete_secret(entry.get("name"),
                                                                     entry.get("type"), namespace)
                 if ret_code != 0:

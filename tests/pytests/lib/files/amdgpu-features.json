@@ -5,6 +5,7 @@
         "0x7408"
       ],
       "series": "MI250X",
+      "product_name": "AMD Instinct MI250X",
       "architecture": "CDNA2",
       "gfx": "gfx90a",
       "gfxversion": "gfx90a",
@@ -32,6 +33,7 @@
         "0x740f"
       ],
       "series": "MI210",
+      "product_name": "AMD Instinct MI210",
       "architecture": "CDNA2",
       "gfx": "gfx90a",
       "features": {
@@ -73,6 +75,7 @@
         "0x7410"
       ],
       "series": "MI210-VF",
+      "product_name": "AMD Instinct MI210",
       "architecture": "CDNA2",
       "gfx": "gfx90a",
       "features": {
@@ -91,6 +94,7 @@
         "0x740c"
       ],
       "series": "MI250",
+      "product_name": "AMD Instinct MI250",
       "architecture": "CDNA2",
       "gfx": "gfx90a",
       "features": {
@@ -118,6 +122,7 @@
         "0x74a1"
       ],
       "series": "MI300X",
+      "product_name": "AMD Instinct MI300X",
       "architecture": "CDNA3",
       "gfx": "gfx942",
       "features": {
@@ -183,6 +188,7 @@
         "0x74b5"
       ],
       "series": "MI300X-VF",
+      "product_name": "AMD Instinct MI300X",
       "architecture": "CDNA3",
       "gfx": "gfx942",
       "features": {
@@ -202,6 +208,7 @@
         "0x74a8"
       ],
       "series": "MI308X",
+      "product_name": "AMD Instinct MI308X",
       "architecture": "CDNA3",
       "gfx": "gfx942",
       "features": {
@@ -248,6 +255,7 @@
         "0x74bc"
       ],
       "series": "MI308X-VF",
+      "product_name": "AMD Instinct MI308X",
       "architecture": "CDNA3",
       "gfx": "gfx942",
       "features": {
@@ -266,6 +274,7 @@
         "0x75a0"
       ],
       "series": "MI350X",
+      "product_name": "AMD Instinct MI350X",
       "architecture": "CDNA4",
       "gfx": "gfx950",
       "features": {
@@ -326,6 +335,7 @@
         "0x74a5"
       ],
       "series": "MI325X",
+      "product_name": "AMD Instinct MI325X",
       "architecture": "CDNA3",
       "gfx": "gfx942",
       "features": {
@@ -384,6 +394,7 @@
         "0x75b0"
       ],
       "series": "MI350X-VF",
+      "product_name": "AMD Instinct MI350X",
       "architecture": "CDNA4",
       "gfx": "gfx950",
       "features": {
@@ -402,6 +413,7 @@
         "0x74b9"
       ],
       "series": "MI325X-VF",
+      "product_name": "AMD Instinct MI325X",
       "architecture": "CDNA3",
       "gfx": "gfx942",
       "features": {
@@ -420,6 +432,7 @@
         "0x75a8"
       ],
       "series": "MI350P",
+      "product_name": "AMD Instinct MI350P",
       "architecture": "CDNA4",
       "gfx": "gfx950",
       "features": {
@@ -469,6 +482,7 @@
         "0x75a3"
       ],
       "series": "MI355X",
+      "product_name": "AMD Instinct MI355X",
       "architecture": "CDNA4",
       "gfx": "gfx950",
       "features": {
@@ -527,6 +541,7 @@
         "0x75b3"
       ],
       "series": "MI355X-VF",
+      "product_name": "AMD Instinct MI355X",
       "architecture": "CDNA4",
       "gfx": "gfx950",
       "features": {
@@ -545,6 +560,7 @@
         "0x7551"
       ],
       "series": "R9700S",
+      "product_name": "AMD Radeon RX 9700S",
       "architecture": "RDNA4",
       "gfx": "gfx1201",
       "features": {
@@ -582,6 +598,7 @@
         "0x744a"
       ],
       "series": "W7900",
+      "product_name": "AMD Radeon PRO W7900",
       "architecture": "RDNA3",
       "gfx": "gfx1100",
       "features": {
@@ -617,6 +634,38 @@
         },
         "anr": {
           "reboot-overhead-seconds": 1200
+        }
+      },
+      "gfxversion": "gfx110x"
+    },
+    {
+      "device-id": [
+        "0x744c"
+      ],
+      "series": "R7900XTX",
+      "product_name": "AMD Radeon RX 7900 XTX",
+      "architecture": "RDNA3",
+      "gfx": "gfx1100",
+      "features": {
+        "gpu_family": "GC_11_0_0",
+        "profiler_metrics": true,
+        "gpu_partitioning": false,
+        "xgmi": true,
+        "ecc": true,
+        "test_runner": {
+          "rvs": true,
+          "agfhc": false,
+          "rvs_recipes": [
+            "mem",
+            "gpup_single",
+            "gst_single",
+            "iet_single",
+            "rcqt_single",
+            "pbqt_single",
+            "pebb_single",
+            "peqt_single",
+            "pesm_1"
+          ]
         }
       },
       "gfxversion": "gfx110x"

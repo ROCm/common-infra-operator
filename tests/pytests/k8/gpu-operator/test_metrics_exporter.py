@@ -1500,9 +1500,7 @@ def test_exporter_pod_annotations(gpu_cluster, deviceconfig_install, environment
 
         # this is a metrics-exporter pod
         node_name = pod['spec']['node_name']
-        K8Helper.triage(environment, pod["metadata"].get("annotations", None) != None,
-                        f"pod : {pod_name} on node {node_name} missing annotations section")
-        pod_annots = pod["metadata"]["annotations"]
+        pod_annots = pod["metadata"].get("annotations") or {}
         for i in range(NUM_ANNOTATIONS):
             lbl = f"pod-annotation-{i}"
             val = f"pod-value-{i}"
@@ -1540,9 +1538,7 @@ def test_exporter_pod_annotations(gpu_cluster, deviceconfig_install, environment
 
         # this is a metrics-exporter pod
         node_name = pod['spec']['node_name']
-        K8Helper.triage(environment, pod["metadata"].get("annotations", None) != None,
-                        f"pod : {pod_name} on node {node_name} missing annotations section")
-        pod_annots = pod["metadata"]["annotations"]
+        pod_annots = pod["metadata"].get("annotations") or {}
         for i in range(NUM_ANNOTATIONS):
             lbl = f"pod-annotation-{i}"
             val = f"pod-value-{i}"
