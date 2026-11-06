@@ -56,6 +56,7 @@ class cluster_node(object):
         self._host_name = None
         self._device_id = None
         self._num_gpus = 0
+        self.num_physical_gpus = 0  # unlike num_gpus, never counts partitions
         self._connect_kwargs = {}
         self._amdgpu_driver_version = None
         self._node_name = node_name

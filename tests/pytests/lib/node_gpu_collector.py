@@ -1113,6 +1113,7 @@ def populate_cluster_node_with_gpu_info(k8_cluster, cluster_node, node_name: str
             cluster_node.num_gpus = total_partitions
         else:
             cluster_node.num_gpus = len(hw_info["gpus"])
+        cluster_node.num_physical_gpus = len(hw_info["gpus"])
     else:
         cluster_node.device_id = None
         cluster_node.gpu_series = None
