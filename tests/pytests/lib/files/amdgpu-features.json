@@ -218,7 +218,6 @@
         "partition_profiles": [
           "SPX",
           "DPX",
-          "QPX",
           "CPX"
         ],
         "nps_modes": [
@@ -595,7 +594,8 @@
     },
     {
       "device-id": [
-        "0x744a"
+        "0x744a",
+        "0x7448"
       ],
       "series": "W7900",
       "product_name": "AMD Radeon PRO W7900",
@@ -605,7 +605,7 @@
         "gpu_family": "GC_11_0_0",
         "profiler_metrics": true,
         "gpu_partitioning": false,
-        "xgmi": true,
+        "xgmi": false,
         "ecc": true,
         "driver": {
           "inbox": {
