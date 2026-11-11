@@ -330,7 +330,11 @@ def test_exporter_all_supported_metrics(gpu_cluster, metrics_samples, images, en
         node_name = k8_util.k8_get_node_hostname(node)
         K8Helper.triage(environment, (cluster_node.num_gpus > 0), f"Node {node_name} has no GPUs present")
         gpu_capacity, _ = k8_util.k8_get_node_gpu_capacity(node_name)
-        gpu_count = min(cluster_node.num_gpus, gpu_capacity) if gpu_capacity > 0 else cluster_node.num_gpus
+        # Number of GPU partitions on the node, and partitions per physical GPU.
+        gpu_count = gpu_capacity if gpu_capacity > 0 else cluster_node.num_gpus
+        # num_gpus counts partitions on a node partitioned at discovery; stride needs physical GPUs
+        physical_gpus = getattr(cluster_node, "num_physical_gpus", 0) or cluster_node.num_gpus
+        slices_per_gpu = max(1, gpu_count // physical_gpus) if physical_gpus else 1
 
         # Pick up first sample of exporter metrics for given node
         idle_metrics = metric_util.parse_metric_data(all_idle_metrics[node_name]['exporter'][0])
@@ -353,7 +357,9 @@ def test_exporter_all_supported_metrics(gpu_cluster, metrics_samples, images, en
         for entry in supported_metrics:
             metric_to_test = entry['name']
             Logger.info(f"Checking {metric_to_test} among exported metrics for node {node_name}")
-            for gpu_id in range(gpu_count):
+            # Socket-scope metrics are present only on each GPU's first partition.
+            step = slices_per_gpu if metric_util.metric_scope(metric_to_test, cluster_node.gpu_series) == 'socket' else 1
+            for gpu_id in range(0, gpu_count, step):
                 if _test_if_metrics_exported(metric_to_test, gpu_id, idle_metrics) == False:
                     Logger.error(f"Idle Conditions Metrics: {metric_to_test} failed for {gpu_id}")
                     failed_metrics[metric_to_test].add(gpu_id)
@@ -427,9 +433,22 @@ def test_exporter_metrics_completeness(gpu_cluster, images, metrics_samples, met
         idle_metrics = all_idle_metrics[node_name]
         workload_metrics = all_workload_metrics[node_name]
         gpu_capacity, _ = k8_util.k8_get_node_gpu_capacity(node_name)
-        gpu_count = min(cluster_node.num_gpus, gpu_capacity) if gpu_capacity > 0 else cluster_node.num_gpus
+        # Number of GPU partitions on the node, and partitions per physical GPU.
+        total_slices = gpu_capacity if gpu_capacity > 0 else cluster_node.num_gpus
+        physical_gpus = getattr(cluster_node, "num_physical_gpus", 0) or cluster_node.num_gpus
+        slices_per_gpu = max(1, total_slices // physical_gpus) if physical_gpus else 1
+        # Socket-scope metrics are present only on each GPU's first partition.
+        step = slices_per_gpu if metric_util.metric_scope(metric_to_test, cluster_node.gpu_series) == 'socket' else 1
+        gpu_ids = list(range(0, total_slices, step))
+        gpu_count = len(gpu_ids)
         num_samples = idle_metrics['num-samples']
         total_samples = num_samples * 2  # idle + load
+
+        # Parse each sample once rather than once per GPU.
+        idle_exporters = [metric_util.parse_metric_data(idle_metrics['exporter'][s])
+                          for s in range(num_samples)]
+        load_exporters = [metric_util.parse_metric_data(workload_metrics['exporter'][s])
+                          for s in range(num_samples)]
 
         # Scan all GPUs and all samples before making any verdict.
         # Track two dimensions:
@@ -438,16 +457,16 @@ def test_exporter_metrics_completeness(gpu_cluster, images, metrics_samples, met
         gpu_missing = {}
         sample_absent_gpus = {'idle': defaultdict(list), 'load': defaultdict(list)}
 
-        for gpu_id in range(gpu_count):
+        for gpu_id in gpu_ids:
             missing = []
             for sample_id in range(num_samples):
-                idle_exporter = metric_util.parse_metric_data(idle_metrics['exporter'][sample_id])
+                idle_exporter = idle_exporters[sample_id]
                 if not _is_metric_present(metric_to_test, metric_types, gpu_id, idle_exporter):
                     missing.append(('idle', sample_id))
                     sample_absent_gpus['idle'][sample_id].append(gpu_id)
                     Logger.warning(f"Completeness: {metric_to_test} gpu:{gpu_id} absent in idle sample {sample_id}")
 
-                load_exporter = metric_util.parse_metric_data(workload_metrics['exporter'][sample_id])
+                load_exporter = load_exporters[sample_id]
                 if not _is_metric_present(metric_to_test, metric_types, gpu_id, load_exporter):
                     missing.append(('load', sample_id))
                     sample_absent_gpus['load'][sample_id].append(gpu_id)
@@ -461,9 +480,9 @@ def test_exporter_metrics_completeness(gpu_cluster, images, metrics_samples, met
         # --- GPU dimension: classify by fraction of samples missing per GPU ---
         # hard-fail: ≥50% of total_samples missing for a GPU
         # xfail:     >1 but <50% missing (transient)
-        hard_fail_gpus = [g for g in range(gpu_count)
+        hard_fail_gpus = [g for g in gpu_ids
                           if len(gpu_missing[g]) * 2 >= total_samples]
-        transient_gpus  = [g for g in range(gpu_count)
+        transient_gpus  = [g for g in gpu_ids
                            if len(gpu_missing[g]) > 1 and len(gpu_missing[g]) * 2 < total_samples]
 
         # --- Sample dimension: classify by fraction of GPUs missing per sample ---

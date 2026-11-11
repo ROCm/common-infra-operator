@@ -211,6 +211,14 @@ def get_metric_support_info(metric_metadata, gpu_series, deployment_mode=None):
         return support
     return None
 
+def metric_scope(metric_name, gpu_series):
+    """Return 'socket' for metrics emitted once per physical GPU, else 'partition'."""
+    metric_metadata = get_metric_metadata(metric_name)
+    if not metric_metadata:
+        return 'partition'
+    support = get_metric_support_info(metric_metadata, gpu_series) or {}
+    return support.get('scope', 'partition')
+
 def health(port, node):
     ret_code, _, _ = node.http_get(port, "metrics")
     assert ret_code == 0, f"Failed to get metrics for {node.ip_address}"
