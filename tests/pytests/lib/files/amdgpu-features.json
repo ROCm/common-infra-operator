@@ -204,6 +204,45 @@
     },
     {
       "device-id": [
+        "0x74a0"
+      ],
+      "series": "MI300A",
+      "product_name": "AMD Instinct MI300A",
+      "architecture": "CDNA3",
+      "gfx": "gfx942",
+      "features": {
+        "gpu_partitioning": true,
+        "xgmi": true,
+        "ecc": true,
+        "partition_profiles": [
+          "SPX",
+          "CPX"
+        ],
+        "nps_modes": [
+          "NPS1"
+        ],
+        "test_runner": {
+          "rvs": true,
+          "agfhc": true,
+          "rvs_recipes": [
+            "gst_single",
+            "iet_single",
+            "pbqt_single",
+            "pebb_single"
+          ],
+          "agfhc_recipes": [
+            "gfx_lvl1",
+            "hbm_lvl1",
+            "xgmi_lvl1",
+            "all_lvl1",
+            "all_lvl2"
+          ]
+        }
+      },
+      "gfxversion": "gfx94x"
+    },
+    {
+      "device-id": [
         "0x74a2",
         "0x74a8"
       ],
